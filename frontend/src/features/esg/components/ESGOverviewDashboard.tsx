@@ -772,7 +772,7 @@ const ESGOverviewDashboard: React.FC = () => {
         </Col>
       </Row>
 
-      <style jsx>{`
+      <style>{`
         .ant-card {
           border-radius: 16px;
           transition: all 0.3s ease;

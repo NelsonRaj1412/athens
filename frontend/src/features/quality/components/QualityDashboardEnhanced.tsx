@@ -48,8 +48,8 @@ interface QualityKPIs {
 
 const QualityDashboardEnhanced: React.FC = () => {
   const [kpis, setKpis] = useState<QualityKPIs | null>(null);
-  const [qualityTrends, setQualityTrends] = useState([]);
-  const [alerts, setAlerts] = useState([]);
+  const [qualityTrends, setQualityTrends] = useState<any[]>([]);
+  const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<[any, any] | null>(null);
   const [activeTab, setActiveTab] = useState('overview');

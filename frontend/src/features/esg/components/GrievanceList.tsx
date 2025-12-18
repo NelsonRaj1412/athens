@@ -137,7 +137,7 @@ const GrievanceList: React.FC = () => {
       title: 'Actions',
       key: 'actions',
       width: 150,
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Space size="small">
           <Button
             type="text"

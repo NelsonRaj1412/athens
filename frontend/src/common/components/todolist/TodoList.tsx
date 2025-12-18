@@ -124,7 +124,7 @@ const TodoList: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Space size="middle">
           <Button type="link" onClick={() => showEditModal(record)}>
             Edit

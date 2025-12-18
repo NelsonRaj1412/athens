@@ -105,7 +105,7 @@ export default function ConcretePourCardFormList() {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Space size="small">
           <Button
             type="text"
@@ -141,8 +141,8 @@ export default function ConcretePourCardFormList() {
     },
   ];
 
-  const breadcrumbItems = [
-    { title: 'Inspection', path: '/inspection' },
+  const breadcrumbs = [
+    { title: 'Inspection', href: '/inspection' },
     { title: 'Concrete Pour Card Forms' }
   ];
 
@@ -160,7 +160,7 @@ export default function ConcretePourCardFormList() {
   return (
     <PageLayout
       title="Concrete Pour Card Forms"
-      breadcrumbItems={breadcrumbItems}
+      breadcrumbs={breadcrumbs}
       actions={headerActions}
     >
       <Table

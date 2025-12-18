@@ -212,9 +212,9 @@ export default function ConcretePourCardForm() {
     { key: 3, checkedBy: "" },
   ];
 
-  const breadcrumbItems = [
-    { title: 'Inspection', path: '/inspection' },
-    { title: 'Concrete Pour Card Forms', path: '/inspection/concrete-pour-card-forms' },
+  const breadcrumbs = [
+    { title: 'Inspection', href: '/inspection' },
+    { title: 'Concrete Pour Card Forms', href: '/inspection/concrete-pour-card-forms' },
     { title: isEdit ? 'Edit Form' : 'New Form' }
   ];
 
@@ -230,7 +230,7 @@ export default function ConcretePourCardForm() {
   return (
     <PageLayout
       title={isEdit ? 'Edit Concrete Pour Card' : 'New Concrete Pour Card'}
-      breadcrumbItems={breadcrumbItems}
+      breadcrumbs={breadcrumbs}
       actions={headerActions}
     >
       <Card className="shadow-lg space-y-8">
@@ -311,13 +311,13 @@ export default function ConcretePourCardForm() {
           size="small"
           pagination={false}
           columns={[
-            { title: "Sr. No.", dataIndex: "key", key: "key", align: "center", width: 80, render: (_, record) => record.key + 1 },
+            { title: "Sr. No.", dataIndex: "key", key: "key", align: "center", width: 80, render: (_: any, record) => record.key + 1 },
             { title: "Particular", dataIndex: "particular", key: "particular" },
             { 
               title: "Inspection Status (OK/Not OK)", 
               dataIndex: "status", 
               key: "status", 
-              render: (_, record) => (
+              render: (_: any, record) => (
                 <Input 
                   value={formData[`pre_pour_${record.key}_status` as keyof typeof formData]}
                   onChange={(e) => handleInputChange(`pre_pour_${record.key}_status`, e.target.value)}
@@ -328,7 +328,7 @@ export default function ConcretePourCardForm() {
               title: "Remarks (If Any)", 
               dataIndex: "remarks", 
               key: "remarks", 
-              render: (_, record) => (
+              render: (_: any, record) => (
                 <Input 
                   value={formData[`pre_pour_${record.key}_remarks` as keyof typeof formData]}
                   onChange={(e) => handleInputChange(`pre_pour_${record.key}_remarks`, e.target.value)}
@@ -346,13 +346,13 @@ export default function ConcretePourCardForm() {
           size="small"
           pagination={false}
           columns={[
-            { title: "Sr. No.", dataIndex: "key", key: "key", align: "center", width: 80, render: (_, record) => record.key + 1 },
+            { title: "Sr. No.", dataIndex: "key", key: "key", align: "center", width: 80, render: (_: any, record) => record.key + 1 },
             { title: "Particular", dataIndex: "particular", key: "particular" },
             { 
               title: "Inspection Status (OK/Not OK)", 
               dataIndex: "status", 
               key: "status", 
-              render: (_, record) => (
+              render: (_: any, record) => (
                 <Input 
                   value={formData[`post_pour_${record.key}_status` as keyof typeof formData]}
                   onChange={(e) => handleInputChange(`post_pour_${record.key}_status`, e.target.value)}
@@ -363,7 +363,7 @@ export default function ConcretePourCardForm() {
               title: "Remarks (If Any)", 
               dataIndex: "remarks", 
               key: "remarks", 
-              render: (_, record) => (
+              render: (_: any, record) => (
                 <Input 
                   value={formData[`post_pour_${record.key}_remarks` as keyof typeof formData]}
                   onChange={(e) => handleInputChange(`post_pour_${record.key}_remarks`, e.target.value)}

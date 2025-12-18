@@ -126,7 +126,7 @@ export default function CementRegisterForm() {
       title: "Date of Receipt", 
       dataIndex: "dateReceipt", 
       key: "dateReceipt", 
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Input 
           size="small" 
           value={formData.table_data[record.key]?.dateReceipt || ''}
@@ -138,7 +138,7 @@ export default function CementRegisterForm() {
       title: "Store Manager Sign", 
       dataIndex: "storeSign", 
       key: "storeSign", 
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Input 
           size="small" 
           value={formData.table_data[record.key]?.storeSign || ''}
@@ -150,7 +150,7 @@ export default function CementRegisterForm() {
       title: "Invoice No.", 
       dataIndex: "invoiceNo", 
       key: "invoiceNo", 
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Input 
           size="small" 
           value={formData.table_data[record.key]?.invoiceNo || ''}
@@ -162,7 +162,7 @@ export default function CementRegisterForm() {
       title: "Week No.", 
       dataIndex: "weekNo", 
       key: "weekNo", 
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Input 
           size="small" 
           value={formData.table_data[record.key]?.weekNo || ''}
@@ -174,7 +174,7 @@ export default function CementRegisterForm() {
       title: "Qty Received (Bags)", 
       dataIndex: "qtyReceived", 
       key: "qtyReceived", 
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Input 
           size="small" 
           value={formData.table_data[record.key]?.qtyReceived || ''}
@@ -186,7 +186,7 @@ export default function CementRegisterForm() {
       title: "Cum Qty Received (Bags)", 
       dataIndex: "cumQtyReceived", 
       key: "cumQtyReceived", 
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Input 
           size="small" 
           value={formData.table_data[record.key]?.cumQtyReceived || ''}
@@ -198,7 +198,7 @@ export default function CementRegisterForm() {
       title: "Date of Consumption", 
       dataIndex: "dateConsumption", 
       key: "dateConsumption", 
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Input 
           size="small" 
           value={formData.table_data[record.key]?.dateConsumption || ''}
@@ -210,7 +210,7 @@ export default function CementRegisterForm() {
       title: "Total Consumption (Bags)", 
       dataIndex: "totalConsumption", 
       key: "totalConsumption", 
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Input 
           size="small" 
           value={formData.table_data[record.key]?.totalConsumption || ''}
@@ -222,7 +222,7 @@ export default function CementRegisterForm() {
       title: "Cum. Total Consumption (Bags)", 
       dataIndex: "cumTotalConsumption", 
       key: "cumTotalConsumption", 
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Input 
           size="small" 
           value={formData.table_data[record.key]?.cumTotalConsumption || ''}
@@ -234,7 +234,7 @@ export default function CementRegisterForm() {
       title: "Stock / Balance (Bags)", 
       dataIndex: "stockBalance", 
       key: "stockBalance", 
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Input 
           size="small" 
           value={formData.table_data[record.key]?.stockBalance || ''}
@@ -246,7 +246,7 @@ export default function CementRegisterForm() {
       title: "Location of Work", 
       dataIndex: "locationWork", 
       key: "locationWork", 
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Input 
           size="small" 
           value={formData.table_data[record.key]?.locationWork || ''}
@@ -258,7 +258,7 @@ export default function CementRegisterForm() {
       title: "Sign of Vendor", 
       dataIndex: "signVendor", 
       key: "signVendor", 
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Input 
           size="small" 
           value={formData.table_data[record.key]?.signVendor || ''}
@@ -270,7 +270,7 @@ export default function CementRegisterForm() {
       title: "Sign of Prozeal Quality", 
       dataIndex: "signProzeal", 
       key: "signProzeal", 
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Input 
           size="small" 
           value={formData.table_data[record.key]?.signProzeal || ''}
@@ -280,9 +280,9 @@ export default function CementRegisterForm() {
     },
   ];
 
-  const breadcrumbItems = [
-    { title: 'Inspection', path: '/inspection' },
-    { title: 'Cement Register Forms', path: '/inspection/cement-register-forms' },
+  const breadcrumbs = [
+    { title: 'Inspection', href: '/inspection' },
+    { title: 'Cement Register Forms', href: '/inspection/cement-register-forms' },
     { title: isEdit ? 'Edit Form' : 'New Form' }
   ];
 
@@ -298,7 +298,7 @@ export default function CementRegisterForm() {
   return (
     <PageLayout
       title={isEdit ? 'Edit Cement Register' : 'New Cement Register'}
-      breadcrumbItems={breadcrumbItems}
+      breadcrumbs={breadcrumbs}
       actions={headerActions}
     >
       <Card className="shadow-lg">

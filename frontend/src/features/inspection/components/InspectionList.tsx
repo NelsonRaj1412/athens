@@ -151,7 +151,7 @@ const InspectionList: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record: Inspection) => (
+      render: (_: any, record: Inspection) => (
         <Space>
           <Button
             type="text"

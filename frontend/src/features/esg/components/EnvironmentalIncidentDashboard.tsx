@@ -174,7 +174,7 @@ const EnvironmentalIncidentDashboard: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
+      render: (_: any, record) => (
         <>
           <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
           <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id!)} />

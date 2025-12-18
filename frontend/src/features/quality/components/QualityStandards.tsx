@@ -75,7 +75,7 @@ const QualityStandards: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record: QualityStandard) => (
+      render: (_: any, record: QualityStandard) => (
         <Space>
           <Button 
             size="small" 

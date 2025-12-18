@@ -552,7 +552,7 @@ const IncidentList: React.FC<IncidentListProps> = ({
       key: 'actions',
       width: 80,
       fixed: 'right',
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Dropdown overlay={getActionMenu(record)} trigger={['click']}>
           <Button type="text" icon={<MoreOutlined />} />
         </Dropdown>

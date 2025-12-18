@@ -98,7 +98,7 @@ export default function BarBendingScheduleFormList() {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Space size="small">
           <Button
             type="text"
@@ -134,8 +134,8 @@ export default function BarBendingScheduleFormList() {
     },
   ];
 
-  const breadcrumbItems = [
-    { title: 'Inspection', path: '/inspection' },
+  const breadcrumbs = [
+    { title: 'Inspection', href: '/inspection' },
     { title: 'Bar Bending Schedule Forms' }
   ];
 
@@ -153,7 +153,7 @@ export default function BarBendingScheduleFormList() {
   return (
     <PageLayout
       title="Bar Bending Schedule Forms"
-      breadcrumbItems={breadcrumbItems}
+      breadcrumbs={breadcrumbs}
       actions={headerActions}
     >
       <Table

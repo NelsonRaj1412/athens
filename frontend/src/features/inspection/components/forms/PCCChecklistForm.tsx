@@ -216,9 +216,9 @@ export default function PCCChecklistForm() {
     { key: 4, field: "Company" },
   ];
 
-  const breadcrumbItems = [
-    { title: 'Inspection', path: '/inspection' },
-    { title: 'PCC Checklist Forms', path: '/inspection/pcc-checklist-forms' },
+  const breadcrumbs = [
+    { title: 'Inspection', href: '/inspection' },
+    { title: 'PCC Checklist Forms', href: '/inspection/pcc-checklist-forms' },
     { title: isEdit ? 'Edit Form' : 'New Form' }
   ];
 
@@ -234,7 +234,7 @@ export default function PCCChecklistForm() {
   return (
     <PageLayout
       title={isEdit ? 'Edit PCC Checklist' : 'New PCC Checklist'}
-      breadcrumbItems={breadcrumbItems}
+      breadcrumbs={breadcrumbs}
       actions={headerActions}
     >
       <Card className="shadow-lg space-y-6">

@@ -98,7 +98,7 @@ export default function BatteryUPSChecklistFormList() {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Space size="small">
           <Button
             type="text"
@@ -134,8 +134,8 @@ export default function BatteryUPSChecklistFormList() {
     },
   ];
 
-  const breadcrumbItems = [
-    { title: 'Inspection', path: '/inspection' },
+  const breadcrumbs = [
+    { title: 'Inspection', href: '/inspection' },
     { title: 'Battery UPS Checklist Forms' }
   ];
 
@@ -153,7 +153,7 @@ export default function BatteryUPSChecklistFormList() {
   return (
     <PageLayout
       title="Battery UPS Checklist Forms"
-      breadcrumbItems={breadcrumbItems}
+      breadcrumbs={breadcrumbs}
       actions={headerActions}
     >
       <Table

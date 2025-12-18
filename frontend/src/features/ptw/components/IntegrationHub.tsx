@@ -9,7 +9,7 @@ import {
   ApiOutlined, CloudOutlined, DatabaseOutlined, MailOutlined,
   MessageOutlined, BellOutlined, SyncOutlined, SettingOutlined,
   CheckCircleOutlined, CloseCircleOutlined, WarningOutlined,
-  ConnectOutlined, DisconnectOutlined, MonitorOutlined,
+  LinkOutlined, DisconnectOutlined, MonitorOutlined,
   FileTextOutlined, SafetyOutlined, ToolOutlined, TeamOutlined,
   UploadOutlined, DownloadOutlined, LinkOutlined, KeyOutlined
 } from '@ant-design/icons';
@@ -380,7 +380,7 @@ const IntegrationHub: React.FC = () => {
       case 'syncing': return <SyncOutlined spin />;
       case 'error': return <CloseCircleOutlined />;
       case 'disconnected': return <DisconnectOutlined />;
-      default: return <ConnectOutlined />;
+      default: return <LinkOutlined />;
     }
   };
 
@@ -475,7 +475,7 @@ const IntegrationHub: React.FC = () => {
             <Statistic
               title="Active Connections"
               value={integrations.filter(i => i.status === 'connected').length}
-              prefix={<ConnectOutlined />}
+              prefix={<LinkOutlined />}
               valueStyle={{ color: '#52c41a' }}
             />
           </Card>
@@ -549,7 +549,7 @@ const IntegrationHub: React.FC = () => {
                 {
                   title: 'Actions',
                   key: 'actions',
-                  render: (_, record) => (
+                  render: (_: any, record) => (
                     <Space>
                       <Button type="text" icon={<MonitorOutlined />} size="small">Test</Button>
                       <Button type="text" icon={<SettingOutlined />} size="small">Config</Button>

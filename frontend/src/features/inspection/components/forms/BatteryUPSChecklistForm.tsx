@@ -132,9 +132,9 @@ export default function BatteryUPSChecklistForm() {
     window.print();
   };
 
-  const breadcrumbItems = [
-    { title: 'Inspection', path: '/inspection' },
-    { title: 'Battery UPS Checklist Forms', path: '/inspection/battery-ups-checklist-forms' },
+  const breadcrumbs = [
+    { title: 'Inspection', href: '/inspection' },
+    { title: 'Battery UPS Checklist Forms', href: '/inspection/battery-ups-checklist-forms' },
     { title: isEdit ? 'Edit Form' : 'New Form' }
   ];
 
@@ -150,7 +150,7 @@ export default function BatteryUPSChecklistForm() {
   return (
     <PageLayout
       title={isEdit ? 'Edit Battery UPS Checklist' : 'New Battery UPS Checklist'}
-      breadcrumbItems={breadcrumbItems}
+      breadcrumbs={breadcrumbs}
       actions={headerActions}
     >
       <Card className="shadow-lg">
@@ -251,7 +251,7 @@ export default function BatteryUPSChecklistForm() {
               title: "Tested By", 
               dataIndex: "one", 
               key: "one", 
-              render: (_, record) => (
+              render: (_: any, record) => (
                 <Input 
                   size="small" 
                   value={formData[`tested_by_${record.field}` as keyof typeof formData] as string}
@@ -263,7 +263,7 @@ export default function BatteryUPSChecklistForm() {
               title: "Witnessed By", 
               dataIndex: "two", 
               key: "two", 
-              render: (_, record) => (
+              render: (_: any, record) => (
                 <Input 
                   size="small" 
                   value={formData[`witness1_${record.field}` as keyof typeof formData] as string}
@@ -275,7 +275,7 @@ export default function BatteryUPSChecklistForm() {
               title: "Witnessed By", 
               dataIndex: "three", 
               key: "three", 
-              render: (_, record) => (
+              render: (_: any, record) => (
                 <Input 
                   size="small" 
                   value={formData[`witness2_${record.field}` as keyof typeof formData] as string}
@@ -287,7 +287,7 @@ export default function BatteryUPSChecklistForm() {
               title: "Witnessed By", 
               dataIndex: "four", 
               key: "four", 
-              render: (_, record) => (
+              render: (_: any, record) => (
                 <Input 
                   size="small" 
                   value={formData[`witness3_${record.field}` as keyof typeof formData] as string}
@@ -311,7 +311,7 @@ export default function BatteryUPSChecklistForm() {
               title: "Specific Gravity", 
               dataIndex: "gravity", 
               key: "gravity", 
-              render: (_, record) => (
+              render: (_: any, record) => (
                 <Input 
                   size="small" 
                   value={formData.cell_test_data[record.key]?.gravity || ''}
@@ -323,7 +323,7 @@ export default function BatteryUPSChecklistForm() {
               title: "Voltage", 
               dataIndex: "voltage", 
               key: "voltage", 
-              render: (_, record) => (
+              render: (_: any, record) => (
                 <Input 
                   size="small" 
                   value={formData.cell_test_data[record.key]?.voltage || ''}
@@ -335,7 +335,7 @@ export default function BatteryUPSChecklistForm() {
               title: "Temp °C", 
               dataIndex: "temp", 
               key: "temp", 
-              render: (_, record) => (
+              render: (_: any, record) => (
                 <Input 
                   size="small" 
                   value={formData.cell_test_data[record.key]?.temp || ''}
@@ -363,7 +363,7 @@ export default function BatteryUPSChecklistForm() {
               title: "Signed By", 
               dataIndex: "one", 
               key: "one", 
-              render: (_, record) => (
+              render: (_: any, record) => (
                 <Input 
                   size="small" 
                   value={formData[`signed_by_${record.field}` as keyof typeof formData] as string}
@@ -375,7 +375,7 @@ export default function BatteryUPSChecklistForm() {
               title: "Witnessed By", 
               dataIndex: "two", 
               key: "two", 
-              render: (_, record) => (
+              render: (_: any, record) => (
                 <Input 
                   size="small" 
                   value={formData[`witness4_${record.field}` as keyof typeof formData] as string}
@@ -387,7 +387,7 @@ export default function BatteryUPSChecklistForm() {
               title: "Witnessed By", 
               dataIndex: "three", 
               key: "three", 
-              render: (_, record) => (
+              render: (_: any, record) => (
                 <Input 
                   size="small" 
                   value={formData[`witness5_${record.field}` as keyof typeof formData] as string}
@@ -399,7 +399,7 @@ export default function BatteryUPSChecklistForm() {
               title: "Witnessed By", 
               dataIndex: "four", 
               key: "four", 
-              render: (_, record) => (
+              render: (_: any, record) => (
                 <Input 
                   size="small" 
                   value={formData[`witness6_${record.field}` as keyof typeof formData] as string}

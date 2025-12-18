@@ -6,7 +6,7 @@ import PageLayout from '@common/components/PageLayout';
 
 const SupplierQuality: React.FC = () => {
   const { message } = App.useApp();
-  const [suppliers, setSuppliers] = useState([]);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
   const [stats, setStats] = useState<any>({});
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({ industry: '', rating: '' });

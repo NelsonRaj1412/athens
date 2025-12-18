@@ -98,7 +98,7 @@ export default function BusDuctChecklistFormList() {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Space size="small">
           <Button
             type="text"
@@ -134,8 +134,8 @@ export default function BusDuctChecklistFormList() {
     },
   ];
 
-  const breadcrumbItems = [
-    { title: 'Inspection', path: '/inspection' },
+  const breadcrumbs = [
+    { title: 'Inspection', href: '/inspection' },
     { title: 'Bus Duct Checklist Forms' }
   ];
 
@@ -153,7 +153,7 @@ export default function BusDuctChecklistFormList() {
   return (
     <PageLayout
       title="Bus Duct Checklist Forms"
-      breadcrumbItems={breadcrumbItems}
+      breadcrumbs={breadcrumbs}
       actions={headerActions}
     >
       <Table

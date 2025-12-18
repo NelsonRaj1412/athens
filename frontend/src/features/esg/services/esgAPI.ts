@@ -57,7 +57,7 @@ export const getEmissionsSummary = () =>
 
 // Waste Manifests
 export const getWasteManifests = () =>
-  api.get<WasteManifest[]>(`${API_BASE}/waste-manifests/`);
+  api.get<{ results: WasteManifest[] } | WasteManifest[]>(`${API_BASE}/waste-manifests/`);
 
 export const createWasteManifest = (data: WasteManifest) =>
   api.post<WasteManifest>(`${API_BASE}/waste-manifests/`, data);

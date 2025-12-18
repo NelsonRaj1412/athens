@@ -18,6 +18,8 @@ interface PageLayoutProps {
   children: ReactNode;
   className?: string;
   showDivider?: boolean;
+  icon?: ReactNode;
+  extra?: ReactNode;
 }
 
 /**
@@ -38,6 +40,8 @@ const PageLayout: React.FC<PageLayoutProps> = ({
   children,
   className = '',
   showDivider = true,
+  icon,
+  extra,
 }) => {
   return (
     <div 
@@ -76,9 +80,12 @@ const PageLayout: React.FC<PageLayoutProps> = ({
         {/* Title and Actions Row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <Title level={2} style={{ margin: 0, marginBottom: 4 }}>
-              {title}
-            </Title>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              {icon && <span>{icon}</span>}
+              <Title level={2} style={{ margin: 0 }}>
+                {title}
+              </Title>
+            </div>
             {subtitle && (
               <Text type="secondary">
                 {subtitle}
@@ -86,13 +93,14 @@ const PageLayout: React.FC<PageLayoutProps> = ({
             )}
           </div>
           
-          {actions && (
-            <div style={{ flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+            {extra && <div>{extra}</div>}
+            {actions && (
               <Space size="middle" wrap>
                 {actions}
               </Space>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 

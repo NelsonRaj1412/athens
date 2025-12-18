@@ -432,9 +432,9 @@ export interface RiskMatrixData {
   matrix_data: number[][];
   incident_distribution: Record<string, number>;
   risk_zones: {
-    low: { range: number[]; color: string; count: number };
-    medium: { range: number[]; color: string; count: number };
-    high: { range: number[]; color: string; count: number };
+    low: { range: [number, number]; color: string; count: number };
+    medium: { range: [number, number]; color: string; count: number };
+    high: { range: [number, number]; color: string; count: number };
   };
 }
 
@@ -593,6 +593,7 @@ export interface EightDTeam {
   recognized_by?: string;   // Foreign key to User
   recognized_by_details?: User;  // Nested user data
   recognized_date?: string;
+  is_recognized?: boolean;  // Add is_recognized property
 }
 
 // 8D Team Form Data (for creating/updating team members)

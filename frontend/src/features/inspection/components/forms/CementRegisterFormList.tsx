@@ -98,7 +98,7 @@ export default function CementRegisterFormList() {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Space size="small">
           <Button
             type="text"
@@ -134,8 +134,8 @@ export default function CementRegisterFormList() {
     },
   ];
 
-  const breadcrumbItems = [
-    { title: 'Inspection', path: '/inspection' },
+  const breadcrumbs = [
+    { title: 'Inspection', href: '/inspection' },
     { title: 'Cement Register Forms' }
   ];
 
@@ -153,7 +153,7 @@ export default function CementRegisterFormList() {
   return (
     <PageLayout
       title="Cement Register Forms"
-      breadcrumbItems={breadcrumbItems}
+      breadcrumbs={breadcrumbs}
       actions={headerActions}
     >
       <Table

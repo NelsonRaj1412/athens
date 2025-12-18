@@ -13,6 +13,7 @@
     "@ant-design/icons": "^6.0.0",
     "@ant-design/plots": "^2.6.3",
     "@emotion/react": "^11.14.0",
+    "@google-cloud/translate": "^8.0.2",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.0.1",
     "@mantine/core": "^8.0.1",
@@ -27,6 +28,7 @@
     "dayjs": "^1.11.13",
     "firebase-tools": "^14.6.0",
     "framer-motion": "^12.17.3",
+    "html5-qrcode": "^2.3.8",
     "leaflet": "^1.9.4",
     "leaflet-geosearch": "^4.2.0",
     "lucide-react": "^0.519.0",
@@ -44,8 +46,7 @@
     "styled-jsx": "^5.1.7",
     "xlsx": "^0.18.5",
     "zod": "^3.25.32",
-    "zustand": "^5.0.4",
-    "@google-cloud/translate": "^8.0.2"
+    "zustand": "^5.0.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",

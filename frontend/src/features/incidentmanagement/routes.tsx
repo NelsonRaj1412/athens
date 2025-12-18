@@ -336,7 +336,7 @@ const LessonsLearnedListWrapper: React.FC = () => {
 const MobileQuickReportWrapper: React.FC = () => {
   return (
     <div className="dashboard-content-wrapper">
-      <MobileQuickReport />
+      <MobileReportPage />
     </div>
   );
 };

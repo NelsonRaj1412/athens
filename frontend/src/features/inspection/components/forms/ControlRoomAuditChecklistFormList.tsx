@@ -75,7 +75,7 @@ const ControlRoomAuditChecklistFormList: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record: any) => (
+      render: (_: any, record: any) => (
         <Space size="middle">
           <Button
             type="link"
@@ -110,8 +110,8 @@ const ControlRoomAuditChecklistFormList: React.FC = () => {
     },
   ];
 
-  const breadcrumbItems = [
-    { title: 'Inspection', path: '/inspection' },
+  const breadcrumbs = [
+    { title: 'Inspection', href: '/inspection' },
     { title: 'Control Room Audit Checklist' }
   ];
 
@@ -120,7 +120,7 @@ const ControlRoomAuditChecklistFormList: React.FC = () => {
   return (
     <PageLayout
       title="Control Room Audit Checklist Forms"
-      breadcrumbItems={breadcrumbItems}
+      breadcrumbs={breadcrumbs}
       extra={
         canCreate ? (
           <Button

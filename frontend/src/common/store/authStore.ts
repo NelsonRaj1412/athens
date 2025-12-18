@@ -9,6 +9,8 @@ interface AuthState {
   usertype: string | null; // contractor, client, etc.
   django_user_type: string | null; // 'projectadmin' or 'adminuser'
   userId: string | number | null;
+  user: any | null; // Add user object
+  selectedProject: any | null; // Add selected project
   isPasswordResetRequired: boolean;
   lastRefreshTime: number | null; // Track when token was last refreshed
   tokenExpiry: string | null; // Track when token expires
@@ -33,6 +35,8 @@ interface AuthState {
   setUsertype: (usertype: string | null) => void;
   setDjangoUserType: (django_user_type: string | null) => void;
   setUserId: (userId: string | number | null) => void;
+  setUser: (user: any | null) => void; // Add setter for user object
+  setSelectedProject: (project: any | null) => void; // Add setter for selected project
   setIsPasswordResetRequired: (value: boolean) => void;
   setLastRefreshTime: (time: number) => void; // Set last refresh time
   setGrade: (grade: string | null) => void; // Add setter for grade
@@ -58,6 +62,8 @@ const useAuthStore = create<AuthState>((set, get) => ({
   usertype: getStoredItem('usertype'),
   django_user_type: getStoredItem('django_user_type'),
   userId: getStoredItem('userId'),
+  user: null, // Initialize user object
+  selectedProject: null, // Initialize selected project
   isPasswordResetRequired: false,
   lastRefreshTime: getStoredItem('lastRefreshTime') ? parseInt(getStoredItem('lastRefreshTime')!, 10) : null,
   tokenExpiry: getStoredItem('tokenExpiry'),
@@ -195,6 +201,12 @@ const useAuthStore = create<AuthState>((set, get) => ({
       }
     }
     set({ userId });
+  },
+  setUser: (user: any | null) => {
+    set({ user });
+  },
+  setSelectedProject: (project: any | null) => {
+    set({ selectedProject: project });
   },
   setIsPasswordResetRequired: (value: boolean) => {
     set({ isPasswordResetRequired: value });

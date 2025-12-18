@@ -113,7 +113,7 @@ const CivilWorkChecklistForm: React.FC = () => {
               {
                 title: "Min Req. Qty.",
                 key: "minReq",
-                render: (_, record, index) => (
+                render: (_: any, record, index) => (
                   <Form.Item name={`item_${index}_min_qty`} className="mb-0">
                     <Input size="small" />
                   </Form.Item>
@@ -122,7 +122,7 @@ const CivilWorkChecklistForm: React.FC = () => {
               {
                 title: "Available Qty.",
                 key: "availableQty",
-                render: (_, record, index) => (
+                render: (_: any, record, index) => (
                   <Form.Item name={`item_${index}_available_qty`} className="mb-0">
                     <Input size="small" />
                   </Form.Item>
@@ -131,7 +131,7 @@ const CivilWorkChecklistForm: React.FC = () => {
               {
                 title: "Remarks",
                 key: "remarks",
-                render: (_, record, index) => (
+                render: (_: any, record, index) => (
                   <Form.Item name={`item_${index}_remarks`} className="mb-0">
                     <Input size="small" />
                   </Form.Item>

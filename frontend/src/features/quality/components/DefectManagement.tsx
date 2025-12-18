@@ -126,7 +126,7 @@ const DefectManagement: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record: any) => (
+      render: (_: any, record: any) => (
         <Space>
           <Button
             size="small"

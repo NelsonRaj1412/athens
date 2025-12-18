@@ -139,7 +139,7 @@ const EnvironmentAspectList: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Space>
           <Button
             type="text"

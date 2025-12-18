@@ -106,7 +106,7 @@ const EnergyManagementDashboard: React.FC = () => {
     {
       title: 'Consumption',
       key: 'consumption',
-      render: (_, record) => `${record.consumption_amount} ${record.consumption_unit}`,
+      render: (_: any, record) => `${record.consumption_amount} ${record.consumption_unit}`,
     },
     {
       title: 'Renewable %',
@@ -129,7 +129,7 @@ const EnergyManagementDashboard: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
+      render: (_: any, record) => (
         <>
           <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
           <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id!)} />

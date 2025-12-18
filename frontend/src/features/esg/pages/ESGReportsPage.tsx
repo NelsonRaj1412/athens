@@ -101,7 +101,7 @@ const ESGReportsPage: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
+      render: (_: any, record) => (
         <div>
           {record.status === 'Generated' && (
             <Button 

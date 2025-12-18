@@ -108,9 +108,9 @@ export default function BatteryChargerChecklistForm() {
     window.print();
   };
 
-  const breadcrumbItems = [
-    { title: 'Inspection', path: '/inspection' },
-    { title: 'Battery Charger Checklist Forms', path: '/inspection/battery-charger-checklist-forms' },
+  const breadcrumbs = [
+    { title: 'Inspection', href: '/inspection' },
+    { title: 'Battery Charger Checklist Forms', href: '/inspection/battery-charger-checklist-forms' },
     { title: isEdit ? 'Edit Form' : 'New Form' }
   ];
 
@@ -126,7 +126,7 @@ export default function BatteryChargerChecklistForm() {
   return (
     <PageLayout
       title={isEdit ? 'Edit Battery Charger Installation Checklist' : 'New Battery Charger Installation Checklist'}
-      breadcrumbItems={breadcrumbItems}
+      breadcrumbs={breadcrumbs}
       actions={headerActions}
     >
       <Card className="shadow-lg">

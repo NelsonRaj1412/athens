@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Form, Input, Select, DatePicker, InputNumber, Button, Card, Row, Col, App } from 'antd';
 import { DeleteOutlined, SaveOutlined } from '@ant-design/icons';
-import { createWasteManifest } from '../services/esgAPI';
+import { createWasteManifest, updateWasteManifest } from '../services/esgAPI';
+import { WasteManifest } from '../types';
 import useAuthStore from '../../../common/store/authStore';
 
 const { Option } = Select;

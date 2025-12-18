@@ -130,7 +130,7 @@ const WorkflowTaskDashboard: React.FC = () => {
       title: 'Priority',
       key: 'priority',
       width: 100,
-      render: (_, record) => {
+      render: (_: any, record) => {
         const priority = getTaskPriority(record);
         return (
           <Badge 
@@ -201,7 +201,7 @@ const WorkflowTaskDashboard: React.FC = () => {
       title: 'Time Elapsed',
       key: 'time_elapsed',
       width: 120,
-      render: (_, record) => {
+      render: (_: any, record) => {
         const createdAt = new Date(record.created_at);
         const now = new Date();
         const hoursElapsed = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60));
@@ -219,7 +219,7 @@ const WorkflowTaskDashboard: React.FC = () => {
       key: 'actions',
       width: 200,
       fixed: 'right',
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Space>
           <Button 
             size="small" 
@@ -410,7 +410,7 @@ const WorkflowTaskDashboard: React.FC = () => {
         </Form>
       </Modal>
 
-      <style jsx>{`
+      <style>{`
         .task-overdue {
           background-color: #fff2f0;
         }

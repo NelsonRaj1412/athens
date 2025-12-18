@@ -93,9 +93,9 @@ export default function ControlCableChecklistForm() {
     window.print();
   };
 
-  const breadcrumbItems = [
-    { title: 'Inspection', path: '/inspection' },
-    { title: 'Control Cable Checklist Forms', path: '/inspection/control-cable-checklist-forms' },
+  const breadcrumbs = [
+    { title: 'Inspection', href: '/inspection' },
+    { title: 'Control Cable Checklist Forms', href: '/inspection/control-cable-checklist-forms' },
     { title: isEdit ? 'Edit Form' : 'New Form' }
   ];
 
@@ -111,7 +111,7 @@ export default function ControlCableChecklistForm() {
   return (
     <PageLayout
       title={isEdit ? 'Edit Control Cable Checklist' : 'New Control Cable Checklist'}
-      breadcrumbItems={breadcrumbItems}
+      breadcrumbs={breadcrumbs}
       actions={headerActions}
     >
       <div className="max-w-[960px] mx-auto p-6 bg-gray-50 rounded-md shadow-md text-gray-700 font-sans text-sm">

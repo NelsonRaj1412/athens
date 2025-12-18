@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Button, Table, Progress, Tag, Space, message, Modal, Form, Select, Input, Upload } from 'antd';
 import { DownloadOutlined, UploadOutlined, DeleteOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import type { UploadRequestOption } from 'antd/es/upload';
+import type { UploadRequestOption } from 'rc-upload/lib/interface';
 import { listBackups, createBackup, deleteBackup, restoreBackup, downloadBackup, uploadBackup } from '../api';
 import PageLayout from '@common/components/PageLayout';
 
@@ -179,7 +179,7 @@ const SystemBackup: React.FC = () => {
       title: 'Actions',
       key: 'actions',
       width: 200,
-      render: (_, record: BackupEntry) => (
+      render: (_: any, record: BackupEntry) => (
         <Space>
           {record.status === 'completed' && (
             <>
@@ -287,9 +287,9 @@ const SystemBackup: React.FC = () => {
             rules={[{ required: true, message: 'Please select backup type' }]}
           >
             <Select placeholder="Select backup type">
-              <Option value="full">Full Backup</Option>
-              <Option value="incremental">Incremental Backup</Option>
-              <Option value="differential">Differential Backup</Option>
+              <Select.Option value="full">Full Backup</Select.Option>
+              <Select.Option value="incremental">Incremental Backup</Select.Option>
+              <Select.Option value="differential">Differential Backup</Select.Option>
             </Select>
           </Form.Item>
 

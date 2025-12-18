@@ -12,6 +12,7 @@ interface QualityAlert {
   description: string;
   severity: 'critical' | 'urgent' | 'warning' | 'info';
   alert_type: string;
+  category?: string;
   is_acknowledged: boolean;
   created_at: string;
   acknowledged_at?: string;

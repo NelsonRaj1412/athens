@@ -6,7 +6,7 @@ import PageLayout from '@common/components/PageLayout';
 
 const QualityTemplates: React.FC = () => {
   const { message } = App.useApp();
-  const [templates, setTemplates] = useState([]);
+  const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);

@@ -219,16 +219,16 @@ const ControlRoomAuditChecklistForm: React.FC = () => {
     }
   };
 
-  const breadcrumbItems = [
-    { title: 'Inspection', path: '/inspection' },
-    { title: 'Control Room Audit Checklist', path: '/inspection/control-room-audit-checklist' },
+  const breadcrumbs = [
+    { title: 'Inspection', href: '/inspection' },
+    { title: 'Control Room Audit Checklist', href: '/inspection/control-room-audit-checklist' },
     { title: isEdit ? 'Edit Form' : 'New Form' }
   ];
 
   return (
     <PageLayout
       title={isEdit ? 'Edit Control Room Audit Checklist' : 'New Control Room Audit Checklist'}
-      breadcrumbItems={breadcrumbItems}
+      breadcrumbs={breadcrumbs}
     >
       <div className="max-w-6xl mx-auto">
         <Form

@@ -99,7 +99,7 @@ export default function PCCChecklistFormList() {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Space size="small">
           <Button
             type="text"
@@ -135,8 +135,8 @@ export default function PCCChecklistFormList() {
     },
   ];
 
-  const breadcrumbItems = [
-    { title: 'Inspection', path: '/inspection' },
+  const breadcrumbs = [
+    { title: 'Inspection', href: '/inspection' },
     { title: 'PCC Checklist Forms' }
   ];
 
@@ -154,7 +154,7 @@ export default function PCCChecklistFormList() {
   return (
     <PageLayout
       title="PCC Checklist Forms"
-      breadcrumbItems={breadcrumbItems}
+      breadcrumbs={breadcrumbs}
       actions={headerActions}
     >
       <Table

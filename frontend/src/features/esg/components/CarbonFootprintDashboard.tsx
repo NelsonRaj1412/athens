@@ -124,12 +124,12 @@ const CarbonFootprintDashboard: React.FC = () => {
     {
       title: 'Period',
       key: 'period',
-      render: (_, record) => `${record.reporting_period_start} to ${record.reporting_period_end}`,
+      render: (_: any, record) => `${record.reporting_period_start} to ${record.reporting_period_end}`,
     },
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
+      render: (_: any, record) => (
         <>
           <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
           <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id!)} />

@@ -95,9 +95,9 @@ export default function BusDuctChecklistForm() {
     window.print();
   };
 
-  const breadcrumbItems = [
-    { title: 'Inspection', path: '/inspection' },
-    { title: 'Bus Duct Checklist Forms', path: '/inspection/bus-duct-checklist-forms' },
+  const breadcrumbs = [
+    { title: 'Inspection', href: '/inspection' },
+    { title: 'Bus Duct Checklist Forms', href: '/inspection/bus-duct-checklist-forms' },
     { title: isEdit ? 'Edit Form' : 'New Form' }
   ];
 
@@ -113,7 +113,7 @@ export default function BusDuctChecklistForm() {
   return (
     <PageLayout
       title={isEdit ? 'Edit Bus Duct Checklist' : 'New Bus Duct Checklist'}
-      breadcrumbItems={breadcrumbItems}
+      breadcrumbs={breadcrumbs}
       actions={headerActions}
     >
       <Card className="shadow-lg">

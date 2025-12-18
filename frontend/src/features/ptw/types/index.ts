@@ -1,3 +1,11 @@
+// Define the UserMinimal interface
+export interface UserMinimal {
+  id: number;
+  username: string;
+  full_name: string;
+  email?: string;
+}
+
 // Define the PermitType interface
 export interface PermitType {
   id: number;
@@ -42,6 +50,20 @@ export interface Permit {
   approved_by_details?: UserMinimal;
   approved_at?: string;
   approval_comments?: string;
+  // Additional fields from errors
+  assigned_workers?: any[];
+  gps_coordinates?: any;
+  risk_assessment_completed?: boolean;
+  probability?: number;
+  severity?: number;
+  safety_checklist?: any;
+  requires_isolation?: boolean;
+  mobile_created?: boolean;
+  offline_id?: string;
+  project?: any;
+  emergency_procedures?: string;
+  audit_trail?: any[];
+  isolation_details?: string;
 }
 
 // Update the PermitStatus type to include verification statuses
@@ -58,16 +80,27 @@ export type PermitStatus =
   | 'suspended'
   | 'cancelled';
 
-// Update the UserMinimal interface to include admin_type and grade properties
-export interface UserMinimal {
+export interface AdminUser {
   id: number;
   username: string;
   email: string;
   first_name: string;
   last_name: string;
-  name?: string;
-  usertype?: string; // Changed from admin_type to usertype
+  usertype: string;
   grade?: string;
+}
+
+export interface WorkflowStep {
+  id: number;
+  name: string;
+  order: number;
+  required_role?: string;
+  is_active: boolean;
+  step_type?: 'verification' | 'approval';
+  assignee?: string;
+  status?: 'pending' | 'approved' | 'rejected';
+  completed_at?: string;
+  comments?: string;
 }
 
 

@@ -7,7 +7,7 @@ import useAuthStore from '@common/store/authStore';
 import PageLayout from '@common/components/PageLayout';
 
 const CivilWorkChecklistFormList: React.FC = () => {
-  const [forms, setForms] = useState([]);
+  const [forms, setForms] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { usertype, username } = useAuthStore();
@@ -86,7 +86,7 @@ const CivilWorkChecklistFormList: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record: any) => (
+      render: (_: any, record: any) => (
         <Space>
           <Button
             type="text"

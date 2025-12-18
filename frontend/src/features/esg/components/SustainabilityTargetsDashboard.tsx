@@ -165,7 +165,7 @@ const SustainabilityTargetsDashboard: React.FC = () => {
     {
       title: 'Current vs Target',
       key: 'values',
-      render: (_, record: SustainabilityTarget) => (
+      render: (_: any, record: SustainabilityTarget) => (
         <div>
           <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
             {record.current_value?.toFixed(2) || 0} / {record.target_value.toFixed(2)} {record.unit_of_measure}
@@ -179,7 +179,7 @@ const SustainabilityTargetsDashboard: React.FC = () => {
     {
       title: 'Timeline',
       key: 'timeline',
-      render: (_, record: SustainabilityTarget) => {
+      render: (_: any, record: SustainabilityTarget) => {
         const currentYear = dayjs().year();
         const totalYears = record.target_year - record.baseline_year;
         const elapsedYears = currentYear - record.baseline_year;
@@ -222,7 +222,7 @@ const SustainabilityTargetsDashboard: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record: SustainabilityTarget) => (
+      render: (_: any, record: SustainabilityTarget) => (
         <div>
           <Button
             type="text"
@@ -519,7 +519,7 @@ const SustainabilityTargetsDashboard: React.FC = () => {
         </Form>
       </Modal>
 
-      <style jsx>{`
+      <style>{`
         .sustainability-summary-card {
           border-radius: 12px;
           box-shadow: 0 4px 12px rgba(0,0,0,0.1);

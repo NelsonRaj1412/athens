@@ -83,7 +83,7 @@ export default function BatteryChargerChecklistFormList() {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
+      render: (_: any, record) => (
         <Space size="small">
           <Button
             type="text"
@@ -119,8 +119,8 @@ export default function BatteryChargerChecklistFormList() {
     },
   ];
 
-  const breadcrumbItems = [
-    { title: 'Inspection', path: '/inspection' },
+  const breadcrumbs = [
+    { title: 'Inspection', href: '/inspection' },
     { title: 'Battery Charger Checklist Forms' }
   ];
 
@@ -138,7 +138,7 @@ export default function BatteryChargerChecklistFormList() {
   return (
     <PageLayout
       title="Battery Charger Installation Checklist Forms"
-      breadcrumbItems={breadcrumbItems}
+      breadcrumbs={breadcrumbs}
       actions={headerActions}
     >
       <Table

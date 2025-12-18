@@ -272,9 +272,9 @@ export default function BarBendingScheduleForm() {
     },
   ];
 
-  const breadcrumbItems = [
-    { title: 'Inspection', path: '/inspection' },
-    { title: 'Bar Bending Schedule Forms', path: '/inspection/bar-bending-schedule-forms' },
+  const breadcrumbs = [
+    { title: 'Inspection', href: '/inspection' },
+    { title: 'Bar Bending Schedule Forms', href: '/inspection/bar-bending-schedule-forms' },
     { title: isEdit ? 'Edit Form' : 'New Form' }
   ];
 
@@ -290,7 +290,7 @@ export default function BarBendingScheduleForm() {
   return (
     <PageLayout
       title={isEdit ? 'Edit Bar Bending Schedule' : 'New Bar Bending Schedule'}
-      breadcrumbItems={breadcrumbItems}
+      breadcrumbs={breadcrumbs}
       actions={headerActions}
     >
       <Card className="shadow-lg rounded-xl">
