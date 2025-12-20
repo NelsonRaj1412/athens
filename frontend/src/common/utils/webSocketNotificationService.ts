@@ -40,8 +40,8 @@ export const useWebSocketNotificationService = () => {
 
     try {
       const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      // Use the backend URL from environment variables or default to localhost:8000
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+      // Use the backend URL from environment variables or default to localhost:8001
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001';
 
       const wsHost = backendUrl.replace(/^https?:\/\//, '');
 
@@ -49,7 +49,7 @@ export const useWebSocketNotificationService = () => {
       const hasPort = wsHost.includes(':');
 
       // Ensure the URL matches the backend's expected format - FIXED PATH
-      const url = `${wsProtocol}://${wsHost}${hasPort ? '' : ':8000'}/ws/notifications/?token=${token}`;
+      const url = `${wsProtocol}://${wsHost}${hasPort ? '' : ':8001'}/ws/notifications/?token=${token}`;
 
       return url;
     } catch (error) {
@@ -194,7 +194,7 @@ export const useWebSocketNotificationService = () => {
       
       // Try different possible WebSocket URLs - FIXED PATHS
       const urls = [
-        `${wsProtocol}://${wsHost}${hasPort ? '' : ':8000'}/ws/notifications/?token=${token}`,
+        `${wsProtocol}://${wsHost}${hasPort ? '' : ':8001'}/ws/notifications/?token=${token}`,
         `${wsProtocol}://${wsHost}/ws/notifications/?token=${token}`
       ];
       

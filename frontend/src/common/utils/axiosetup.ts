@@ -19,7 +19,7 @@ function getCsrfToken() {
 }
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
   withCredentials: true,
   timeout: parseInt(import.meta.env.VITE_API_TIMEOUT) || 30000,
   headers: {
@@ -30,6 +30,17 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
+    // Force override any backend:8000 URLs
+    if (config.url && config.url.includes('backend:8000')) {
+      config.url = config.url.replace('http://backend:8000', 'http://localhost:8000');
+      config.url = config.url.replace('https://backend:8000', 'http://localhost:8000');
+    }
+    
+    // Ensure baseURL is correct
+    if (!config.baseURL || config.baseURL.includes('backend:')) {
+      config.baseURL = 'http://localhost:8000';
+    }
+
     // Add authorization token if available
     const token = useAuthStore.getState().token;
     if (token && config.headers) {
