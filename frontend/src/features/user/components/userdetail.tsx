@@ -178,12 +178,13 @@ const UserDetail: React.FC<UserDetailProps> = ({ initialMobile }) => {
 
       // Set photo file list if photo exists
       if (data.photo) {
+        const photoUrl = data.photo.startsWith('http') ? data.photo : `https://prozeal.athenas.co.in${data.photo}`;
         setPhotoFileList([{
           uid: '-1',
           name: 'profile_photo.png',
           status: 'done',
-          url: data.photo,
-          thumbUrl: data.photo,
+          url: photoUrl,
+          thumbUrl: photoUrl,
         }]);
       }
 
@@ -196,9 +197,9 @@ const UserDetail: React.FC<UserDetailProps> = ({ initialMobile }) => {
         department: data.department || '', designation: data.designation || '', email: data.email || '',
         mobile: data.mobile || initialMobile || '',
         uan: data.uan || '', pan: data.pan || '', aadhaar: data.aadhaar || '', markOfIdentification: data.mark_of_identification || '',
-        panAttachment: createFileListItem(data.pan_attachment, 'pan'),
-        aadhaarAttachment: createFileListItem(data.aadhaar_attachment, 'aadhaar'),
-        specimenSignature: createFileListItem(data.specimen_signature, 'specimen_signature'),
+        panAttachment: createFileListItem(data.pan_attachment ? (data.pan_attachment.startsWith('http') ? data.pan_attachment : `https://prozeal.athenas.co.in${data.pan_attachment}`) : null, 'pan'),
+        aadhaarAttachment: createFileListItem(data.aadhaar_attachment ? (data.aadhaar_attachment.startsWith('http') ? data.aadhaar_attachment : `https://prozeal.athenas.co.in${data.aadhaar_attachment}`) : null, 'aadhaar'),
+        specimenSignature: createFileListItem(data.specimen_signature ? (data.specimen_signature.startsWith('http') ? data.specimen_signature : `https://prozeal.athenas.co.in${data.specimen_signature}`) : null, 'specimen_signature'),
       };
       form.setFieldsValue(formValues);
     } catch (error) {

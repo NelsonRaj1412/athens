@@ -8,6 +8,7 @@ import { useTheme } from '@common/contexts/ThemeContext';
 import { safeLog } from '../../../common/utils/logSanitizer';
 // import { handleApiError } from '../../../common/utils/errorHandler'; // Unused import
 import { useNotificationsContext } from '../../../common/contexts/NotificationsContext';
+import { authGuard } from '../../../common/utils/authGuard';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -69,6 +70,12 @@ const MomCreationForm: React.FC<MomCreationFormProps> = ({ onFinishSuccess }) =>
   useEffect(() => {
     if (selectedDepartments.length > 0) {
       const fetchUsersByDepartments = async () => {
+        // Check authentication before making API call
+        if (!authGuard.canMakeApiCall()) {
+          console.log('User not authenticated, skipping users fetch');
+          return;
+        }
+
         setLoadingUsers(true);
         setUsers([]); // Clear previous users
         form.setFieldsValue({ participants_ids: [] }); // Clear selected participants
@@ -87,7 +94,10 @@ const MomCreationForm: React.FC<MomCreationFormProps> = ({ onFinishSuccess }) =>
               }
             } catch (error) {
               safeLog.error(`Failed to load users for department`, { department, error });
-              message.error(`Failed to load users for department ${department}.`);
+              // Only show error message if user is authenticated
+              if (authGuard.canMakeApiCall()) {
+                message.error(`Failed to load users for department ${department}.`);
+              }
             }
           }
 
@@ -98,7 +108,10 @@ const MomCreationForm: React.FC<MomCreationFormProps> = ({ onFinishSuccess }) =>
 
           setUsers(uniqueUsers);
         } catch (error) {
-          message.error('Failed to load users from selected departments.');
+          // Only show error message if user is authenticated
+          if (authGuard.canMakeApiCall()) {
+            message.error('Failed to load users from selected departments.');
+          }
           safeLog.error("Users fetch error", error);
         } finally {
           setLoadingUsers(false);

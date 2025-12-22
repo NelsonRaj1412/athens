@@ -71,30 +71,29 @@ class UserDetailRetrieveUpdateView(generics.RetrieveUpdateAPIView):
                 user_detail.employee_id
             )
 
-        # Send notification to admin if this is a new complete submission
-        if has_submitted_details and not user_detail.is_approved and self.request.user.created_by:
-            try:
-                from .notification_utils import send_websocket_notification
-                send_websocket_notification(
-                    user_id=self.request.user.created_by.id,
-                    title="New User Details Submitted",
-                    message=f"{self.request.user.username} has submitted their user details for approval.",
-                    notification_type="user_detail_submission",
-                    data={
-                        'user_id': self.request.user.id,
-                        'username': self.request.user.username,
-                        'user_detail_id': user_detail.id,
-                        'formType': 'userdetail'
-                    },
-                    sender_id=self.request.user.id
-                )
-            except Exception as e:
-                logger.warning(f"Failed to send user detail submission notification: {sanitize_log_input(str(e))}")
+            # Send notification to admin if this is a new complete submission
+            if has_submitted_details and not user_detail.is_approved and self.request.user.created_by:
+                try:
+                    from .notification_utils import send_websocket_notification
+                    send_websocket_notification(
+                        user_id=self.request.user.created_by.id,
+                        title="New User Details Submitted",
+                        message=f"{self.request.user.username} has submitted their user details for approval.",
+                        notification_type="user_detail_submission",
+                        data={
+                            'user_id': self.request.user.id,
+                            'username': self.request.user.username,
+                            'user_detail_id': user_detail.id,
+                            'formType': 'userdetail'
+                        },
+                        sender_id=self.request.user.id
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to send user detail submission notification: {sanitize_log_input(str(e))}")
 
         except Exception as e:
             logger.error(f"User detail save failed for {sanitize_log_input(self.request.user.username)}: {sanitize_log_input(str(e))}")
             raise
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def list_users(request):
@@ -1297,7 +1296,7 @@ class AdminDetailView(APIView):
                         'photo': None,
                         'logo': None,
                         'is_approved': False,
-                        'created_at': user.date_joined
+                        'created_at': user.created_at if hasattr(user, 'created_at') else None
                     }
                 }
                 return Response(response_data, status=status.HTTP_200_OK)

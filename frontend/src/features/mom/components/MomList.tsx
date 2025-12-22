@@ -10,6 +10,7 @@ import PageLayout from '@common/components/PageLayout';
 import { useTheme } from '@common/contexts/ThemeContext';
 import { usePermissionControl } from '../../../hooks/usePermissionControl';
 import PermissionRequestModal from '../../../components/permissions/PermissionRequestModal';
+import { authGuard } from '../../../common/utils/authGuard';
 
 // const { Title } = Typography; // Unused import
 
@@ -69,6 +70,12 @@ const MomList: React.FC = () => {
   }, [moms.length, pageSize, currentPage, message]);
 
   const fetchMoms = async (navigateToNewItem = false) => {
+    // Check authentication before making API call
+    if (!authGuard.canMakeApiCall()) {
+      console.log('User not authenticated, skipping MOM list fetch');
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await api.get<Mom[] | ApiResponse>('/api/v1/mom/list/');
@@ -105,8 +112,11 @@ const MomList: React.FC = () => {
       }
 
       setMoms(momsWithStatus || []);
-    } catch (error) {
-      message.error('Failed to fetch meeting list.');
+    } catch (error: any) {
+      // Only show error message if user is authenticated (to avoid showing errors on login page)
+      if (authGuard.canMakeApiCall()) {
+        message.error('Failed to fetch meeting list.');
+      }
       setMoms([]);
     } finally {
       setLoading(false);

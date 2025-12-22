@@ -174,7 +174,7 @@ class SignatureTemplateDataView(APIView):
                 'user_data': {
                     'full_name': f"{request.user.name or ''} {request.user.surname or ''}".strip(),
                     'designation': request.user.designation or '',
-                    'employee_id': getattr(request.user, 'employee_id', '') or '',
+                    'employee_id': user_detail.employee_id or '',
                     'company_name': company_name,
                     'has_company_logo': bool(company_logo),
                     'logo_url': logo_url

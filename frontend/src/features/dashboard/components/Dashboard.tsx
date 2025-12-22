@@ -58,6 +58,7 @@ const Dashboard: React.FC = () => {
     const [adminToApprove, setAdminToApprove] = useState<any | null>(null);
     const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
     const [companyName, setCompanyName] = useState<string>('YourBrand');
+    const [userProfilePicUrl, setUserProfilePicUrl] = useState<string | null>(null);
     const [meetingInvitationModalVisible, setMeetingInvitationModalVisible] = useState(false);
     const [currentMeetingInvitation, setCurrentMeetingInvitation] = useState<{ momId: any; userId: any; title: any; notificationId: any; } | null>(null);
     const [meetingModalLoading, setMeetingModalLoading] = useState(false);
@@ -135,36 +136,12 @@ const Dashboard: React.FC = () => {
     const handleMenuClick = (e: any) => navigate(e.key);
 
     const getMenuItems = () => {
-        if (usertype === 'master') {
-            return [
-                { key: '/dashboard', icon: <DashboardOutlined />, label: 'Overview' },
-                { key: '/dashboard/projects', icon: <ProjectOutlined />, label: 'Projects' },
-                { key: '/dashboard/adminusers', icon: <TeamOutlined />, label: 'Admin Users' },
-                { key: '/dashboard/pending-approvals', icon: <ClockCircleOutlined />, label: 'Pending Approvals' },
-                {
-                    key: 'system',
-                    icon: <SettingOutlined />,
-                    label: 'System Management',
-                    children: [
-                        { key: '/dashboard/system/settings', icon: <SettingOutlined />, label: 'Settings' },
-                        { key: '/dashboard/system/logs', icon: <FileTextOutlined />, label: 'System Logs' },
-                        { key: '/dashboard/system/backup', icon: <DatabaseOutlined />, label: 'Backup' },
-                    ]
-                }
-            ];
-        }
-        
-        if (django_user_type === 'projectadmin') {
-            return [
-                { key: '/dashboard', icon: <DashboardOutlined />, label: 'Overview' },
-                { key: '/dashboard/users', icon: <UserOutlined />, label: 'Users' },
-                { key: '/dashboard/admindetail', icon: <UserOutlined />, label: 'Admin Detail' },
-            ];
-        }
-        
-        return [
-            { key: '/dashboard', icon: <DashboardOutlined />, label: 'Overview' },
-        ];
+        return getMenuItemsForUser(
+            usertype, 
+            django_user_type, 
+            isApproved, 
+            hasSubmittedDetails
+        );
     };
 
 
@@ -291,11 +268,43 @@ const Dashboard: React.FC = () => {
           }
         };
 
+        const fetchUserProfilePic = async () => {
+          try {
+            let profilePicUrl = null;
+            
+            if (django_user_type === 'adminuser') {
+              // For admin users, get profile pic from UserDetail
+              const userDetailResponse = await api.get('/authentication/userdetail/');
+              if (userDetailResponse.data?.photo) {
+                profilePicUrl = userDetailResponse.data.photo;
+              }
+            } else if (usertype === 'projectadmin') {
+              // For project admins, get profile pic from AdminDetail
+              const adminDetailResponse = await api.get('/authentication/admin/me/');
+              if (adminDetailResponse.data?.photo_url) {
+                profilePicUrl = adminDetailResponse.data.photo_url;
+              }
+            }
+            
+            if (profilePicUrl) {
+              // Ensure proper URL format
+              if (!profilePicUrl.startsWith('http')) {
+                profilePicUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${profilePicUrl.startsWith('/') ? profilePicUrl : '/' + profilePicUrl}`;
+              }
+              setUserProfilePicUrl(profilePicUrl);
+            }
+          } catch (error) {
+            console.error('Failed to fetch user profile picture:', error);
+            setUserProfilePicUrl(null);
+          }
+        };
+
         // Only fetch if we have user type information
         if (usertype && username) {
           fetchCompanyDetails();
+          fetchUserProfilePic();
         }
-      }, [usertype, username]);
+      }, [usertype, username, django_user_type]);
 
     // Separate useEffect for event listeners
     useEffect(() => {
@@ -420,14 +429,36 @@ const Dashboard: React.FC = () => {
             >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: collapsed && !(isMobile || isTablet) ? 'center' : 'space-between', padding: collapsed && !(isMobile || isTablet) ? '16px 8px' : '16px 24px', borderBottom: '1px solid #f0f0f0' }}>
                     {collapsed && !(isMobile || isTablet) ? (
-                        <div style={{ width: 40, height: 40, backgroundColor: '#f0f0f0', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <ApartmentOutlined style={{ fontSize: 20, color: '#666' }} />
+                        <div style={{ width: 40, height: 40, backgroundColor: '#f0f0f0', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                            {companyLogoUrl ? (
+                                <img 
+                                    src={companyLogoUrl} 
+                                    alt="Company Logo" 
+                                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                    onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                        e.currentTarget.nextElementSibling.style.display = 'flex';
+                                    }}
+                                />
+                            ) : null}
+                            <ApartmentOutlined style={{ fontSize: 20, color: '#666', display: companyLogoUrl ? 'none' : 'block' }} />
                         </div>
                     ) : (
                         <>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <div style={{ width: 40, height: 40, backgroundColor: '#f0f0f0', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <ApartmentOutlined style={{ fontSize: 20, color: '#666' }} />
+                                <div style={{ width: 40, height: 40, backgroundColor: '#f0f0f0', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                                    {companyLogoUrl ? (
+                                        <img 
+                                            src={companyLogoUrl} 
+                                            alt="Company Logo" 
+                                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                            onError={(e) => {
+                                                e.currentTarget.style.display = 'none';
+                                                e.currentTarget.nextElementSibling.style.display = 'block';
+                                            }}
+                                        />
+                                    ) : null}
+                                    <ApartmentOutlined style={{ fontSize: 20, color: '#666', display: companyLogoUrl ? 'none' : 'block' }} />
                                 </div>
                                 <span style={{ fontWeight: 600, fontSize: 16 }}>{companyName}</span>
                             </div>
@@ -446,7 +477,11 @@ const Dashboard: React.FC = () => {
                     <div className="bg-color-bg-base p-4 rounded-lg">
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-3">
-                                <Avatar icon={<UserOutlined />} />
+                                <Avatar 
+                                    src={userProfilePicUrl} 
+                                    icon={<UserOutlined />} 
+                                    style={{ backgroundColor: userProfilePicUrl ? 'transparent' : undefined }}
+                                />
                                 {!collapsed && <Text className="font-semibold text-color-text-base">{username || 'User'}</Text>}
                             </div>
                             {!collapsed && (
@@ -524,7 +559,13 @@ const Dashboard: React.FC = () => {
                         <Button shape="circle" icon={<Badge count={unreadCount} size="small"><BellOutlined /></Badge>} size="large" type="text" className="!text-color-text-muted" />
                     </Dropdown>
                     <Dropdown menu={{ onClick: handleUserMenuClick, items: (() => { const i = []; if (django_user_type === 'adminuser') { i.push({ key: '/dashboard/profile', label: 'Profile' }); } if (usertype === 'master') { i.push({ key: '/dashboard/settings', label: 'Settings' }); } i.push({ key: 'logout', label: 'Logout', danger: true }); return i; })() }} placement="bottomRight" arrow trigger={['click']} >
-                        <Avatar size="large" icon={<UserOutlined />} className="cursor-pointer" />
+                        <Avatar 
+                            size="large" 
+                            src={userProfilePicUrl} 
+                            icon={<UserOutlined />} 
+                            className="cursor-pointer"
+                            style={{ backgroundColor: userProfilePicUrl ? 'transparent' : undefined }}
+                        />
                     </Dropdown>
                 </div>
             </Header>

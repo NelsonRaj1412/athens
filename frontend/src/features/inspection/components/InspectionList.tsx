@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { inspectionService } from '../services/inspectionService';
 import type { Inspection } from '../types';
 import useAuthStore from '@common/store/authStore';
+import { authGuard } from '../../../common/utils/authGuard';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -19,6 +20,12 @@ const InspectionList: React.FC = () => {
   const { selectedProject } = useAuthStore();
 
   const fetchInspections = async () => {
+    // Check authentication before making API call
+    if (!authGuard.canMakeApiCall()) {
+      console.log('User not authenticated, skipping inspections fetch');
+      return;
+    }
+
     setLoading(true);
     try {
       const params: any = {};
@@ -30,7 +37,10 @@ const InspectionList: React.FC = () => {
       const response = await inspectionService.getInspections(params);
       setInspections(response.data.results);
     } catch (error) {
-      message.error('Failed to fetch inspections');
+      // Only show error message if user is authenticated
+      if (authGuard.canMakeApiCall()) {
+        message.error('Failed to fetch inspections');
+      }
     } finally {
       setLoading(false);
     }

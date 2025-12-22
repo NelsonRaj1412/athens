@@ -101,8 +101,15 @@ class SignatureTemplateGenerator:
         right_y += line_height
         
         # Employee ID if available
-        if hasattr(user_detail.user, 'employee_id') and user_detail.user.employee_id:
-            draw.text((right_margin, right_y), f"ID: {user_detail.user.employee_id}", font=detail_font, fill=text_color)
+        employee_id = None
+        try:
+            if hasattr(user_detail, 'employee_id') and user_detail.employee_id:
+                employee_id = user_detail.employee_id
+        except:
+            pass
+            
+        if employee_id:
+            draw.text((right_margin, right_y), f"ID: {employee_id}", font=detail_font, fill=text_color)
             right_y += line_height
         
         # Date placeholder
@@ -122,11 +129,12 @@ class SignatureTemplateGenerator:
         img_io.seek(0)
         
         # Create template data
+        employee_id = getattr(user_detail, 'employee_id', '') or ''
         template_data = {
             'user_id': user_detail.user.id,
             'full_name': full_name,
             'designation': user_detail.user.designation or '',
-            'employee_id': getattr(user_detail.user, 'employee_id', '') or '',
+            'employee_id': employee_id,
             'company_name': self._get_company_name(user_detail.user),
             'template_created_at': datetime.now().isoformat(),
             'template_version': '3.0'
