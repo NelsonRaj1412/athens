@@ -25,14 +25,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', '+*TXs=OifkLMtu7*p4A3&tR1iPKAJi-XMKtc1e9M0Q!#E!16Bn')
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes', 'on')
 
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = 'dev-key-only-for-development'
+    else:
+        raise ValueError('SECRET_KEY environment variable must be set in production')
+
 # Production-ready allowed hosts configuration
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '72.60.218.167', 'prozeal.athenas.co.in']
 
 # ============================================================================
 # PRODUCTION SECURITY SETTINGS
@@ -62,6 +67,7 @@ X_FRAME_OPTIONS = 'DENY'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Development overrides (only when DEBUG=True)
+DEBUG = True  # Re-enable debug mode
 if DEBUG:
     SECURE_SSL_REDIRECT = False
     SECURE_HSTS_SECONDS = 0
@@ -107,10 +113,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # MUST be first for CORS to work properly
     'django.middleware.security.SecurityMiddleware',
-    'authentication.middleware.SecurityMiddleware',  # Custom security middleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',  # Disabled for API
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -162,7 +167,7 @@ if db_engine == 'postgresql':
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': os.getenv('DB_NAME', 'final'),
             'USER': os.getenv('DB_USER', 'postgres'),
-            'PASSWORD': os.getenv('DB_PASSWORD', 'apple'),
+            'PASSWORD': os.getenv('DB_PASSWORD'),
             'HOST': os.getenv('DB_HOST', 'localhost'),
             'PORT': os.getenv('DB_PORT', '5432'),
         }
@@ -237,82 +242,20 @@ FRONTEND_BASE_URL = 'http://localhost:5173'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CORS settings - Fixed for local development
-if DEBUG:
-    # Development: Allow specific origins
-    CORS_ALLOW_ALL_ORIGINS = False
-    CORS_ALLOWED_ORIGINS = [
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:3000',  # Alternative React port
-        'http://127.0.0.1:3000',
-    ]
-else:
-    # Production: Use environment variable
-    CORS_ALLOW_ALL_ORIGINS = False
-    CORS_ALLOWED_ORIGINS = os.getenv(
-        'CORS_ALLOWED_ORIGINS',
-        ''
-    ).split(',') if os.getenv('CORS_ALLOWED_ORIGINS') else []
-
-# Additional CORS security settings
+# CORS settings - Explicit headers
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_PRIVATE_NETWORK = DEBUG  # Only in development
-
-# CORS headers for development
-if DEBUG:
-    CORS_ALLOW_HEADERS = [
-        'accept',
-        'accept-encoding',
-        'authorization',
-        'content-type',
-        'dnt',
-        'origin',
-        'user-agent',
-        'x-csrftoken',
-        'x-requested-with',
-    ]
-
-    # Additional CORS settings for development
-    CORS_ALLOW_METHODS = [
-        'DELETE',
-        'GET',
-        'OPTIONS',
-        'PATCH',
-        'POST',
-        'PUT',
-    ]
-
-    CORS_PREFLIGHT_MAX_AGE = 86400
-
-    # Allow all headers in development
-    CORS_ALLOW_ALL_ORIGINS = False  # Keep this False for security
-    CORS_ALLOWED_ORIGIN_REGEXES = [
-        r"^http://localhost:\d+$",
-        r"^http://127\.0\.0\.1:\d+$",
-    ]
-
-    # Ensure CORS headers are added to all responses
-    CORS_EXPOSE_HEADERS = ['*']
-    CORS_ALLOW_HEADERS = [
-        'accept',
-        'accept-encoding',
-        'authorization',
-        'content-type',
-        'dnt',
-        'origin',
-        'user-agent',
-        'x-csrftoken',
-        'x-requested-with',
-        'cache-control',
-        'pragma',
-        'expires',
-    ]
-
-# Allow custom headers for secure login
+CORS_ALLOWED_ORIGINS = [
+    'https://prozeal.athenas.co.in',
+    'http://72.60.218.167:3000',
+]
+CSRF_TRUSTED_ORIGINS = [
+    'https://prozeal.athenas.co.in',
+    'http://72.60.218.167:3000',
+]
 CORS_ALLOW_HEADERS = [
     'accept',
-    'accept-encoding',
+    'accept-encoding', 
     'authorization',
     'content-type',
     'dnt',
@@ -320,34 +263,9 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
-    'x-request-id',  # Custom header for secure login
-    'x-client-version',  # Custom header for secure login
-    'cache-control',
-    'pragma',
 ]
-
-# Additional CORS settings for Uvicorn
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
-
-CORS_PREFLIGHT_MAX_AGE = 86400  # 24 hours
-
-# CSRF trusted origins - Environment configurable
-CSRF_TRUSTED_ORIGINS = os.getenv(
-    'CSRF_TRUSTED_ORIGINS',
-    'http://localhost:5173,http://127.0.0.1:5173'
-).split(',')
-
-# CSRF settings - Enhanced security
-CSRF_USE_SESSIONS = False
-CSRF_FAILURE_VIEW = 'django.views.csrf.csrf_failure'
-CSRF_COOKIE_NAME = 'csrftoken'
+CORS_ALLOW_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+CORS_PREFLIGHT_MAX_AGE = 86400
 
 # REST Framework settings
 REST_FRAMEWORK = {
@@ -485,52 +403,10 @@ LOGGING = {
 # Create logs directory if it doesn't exist
 os.makedirs(os.path.join(BASE_DIR, 'logs'), exist_ok=True)
 
-# Add detailed logging configuration
-import logging
-
-# Logging configuration
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'debug.log'),
-            'formatter': 'verbose',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-    'channels': {
-        'handlers': ['console', 'file'],
-        'level': 'DEBUG',
-        'propagate': False,
-    },
-},
-}
-
 # Set specific loggers to DEBUG level
-logging.getLogger('channels').setLevel(logging.DEBUG)
+import logging
+if DEBUG:
+    logging.getLogger('channels').setLevel(logging.DEBUG)
 
 # ============================================================================
 # GOOGLE TRANSLATE API CONFIGURATION

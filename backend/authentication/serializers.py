@@ -202,7 +202,13 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         user = self.user.__class__.objects.get(pk=self.user.pk)
         
         # Check user_type first, then admin_type
-        if user.user_type == 'projectadmin':
+        if user.user_type == 'master':
+            data['usertype'] = 'master'
+            data['username'] = user.username
+        elif user.user_type in ['superadmin', 'masteradmin']:
+            data['usertype'] = 'MASTER_ADMIN'
+            data['username'] = user.username
+        elif user.user_type == 'projectadmin':
             # Handle master admin specially
             if user.admin_type == 'master':
                 data['usertype'] = 'MASTER_ADMIN'

@@ -54,12 +54,12 @@ const QualityDashboard: React.FC = () => {
 
   const getResultColor = (result: string) => {
     const colors = {
-      pass: 'green',
-      fail: 'red',
-      conditional: 'orange',
-      rework: 'purple'
+      pass: '#22c55e',
+      fail: '#ef4444',
+      conditional: '#f97316',
+      rework: '#a855f7'
     };
-    return colors[result as keyof typeof colors] || 'default';
+    return colors[result as keyof typeof colors] || '#6b7280';
   };
 
   const inspectionColumns = [

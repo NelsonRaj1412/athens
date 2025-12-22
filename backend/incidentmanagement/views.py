@@ -7,6 +7,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.db.models import Count, Q, Avg
 from django.shortcuts import get_object_or_404
+import os
 
 
 from .models import (
@@ -90,7 +91,7 @@ class IncidentViewSet(viewsets.ModelViewSet):
                 IncidentAttachment.objects.create(
                     incident=incident,
                     file=file,
-                    filename=file.name,
+                    filename=os.path.basename(file.name),
                     file_size=file.size,
                     file_type=file.content_type,
                     uploaded_by=self.request.user

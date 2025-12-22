@@ -1,6 +1,6 @@
 <div class="web-app-dashboard">
     <div class="dashboard-header">
-        <h2>Welcome, <?php echo wp_get_current_user()->display_name; ?></h2>
+        <h2>Welcome, <?php echo esc_html(wp_get_current_user()->display_name); ?></h2>
         <div class="user-avatar">
             <!-- PLACE IMAGE: User profile picture (150x150px) -->
             <?php echo get_avatar(get_current_user_id(), 150); ?>

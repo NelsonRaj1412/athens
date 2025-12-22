@@ -9,12 +9,6 @@ import { FaApple, FaGoogle, FaXTwitter } from 'react-icons/fa6';
 
 import api from '../../../common/utils/axiosetup';
 import useAuthStore from '../../../common/store/authStore';
-import {
-  encodeCredentials,
-  hashString,
-  getClientFingerprint,
-  loginRateLimiter
-} from '../../../common/utils/security';
 
 // Your original asset imports, 100% preserved
 import ones from '../../../assets/ones.jpg';
@@ -132,41 +126,15 @@ const LoginPage: React.FC = () => {
 
 
 
-  // Your original working login function with added security enhancements
   const onFinish = async (values: any) => {
     setIsLoading(true);
     try {
-      // Enterprise Security: Rate limiting check
-      const clientId = getClientFingerprint();
-      if (!loginRateLimiter.canAttemptLogin(clientId)) {
-        const remainingTime = Math.ceil(loginRateLimiter.getRemainingLockoutTime(clientId) / 1000 / 60);
-        message.error(`Too many failed attempts. Please try again in ${remainingTime} minutes.`);
-        return;
-      }
-
-      // Enterprise Security: Encode credentials for secure transmission
-      const encodedCredentials = encodeCredentials(values.username, values.password);
-      const timestamp = Date.now();
-      const requestHash = await hashString(`${values.username}${timestamp}${clientId}`);
-
-      // Use enterprise-grade secure payload
-      const securePayload = {
-        credentials: encodedCredentials,
-        timestamp: timestamp,
-        hash: requestHash,
-        clientId: clientId,
-        clientInfo: {
-          tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          lang: navigator.language.substring(0, 5)
-        }
-      };
-
-      const response = await api.post('/authentication/login/', securePayload, {
-        headers: { 'Content-Type': 'application/json' },
-        withCredentials: true
+      // Simple direct login without security complexity
+      const response = await api.post('/authentication/login/', {
+        username: values.username,
+        password: values.password
       });
 
-      // Your original working response handling - EXACTLY as it was
       const { access, refresh, username, usertype, django_user_type, userId, user_id, isPasswordResetRequired, grade, project_id } = response.data;
       const token = access || response.data.token;
 
@@ -175,13 +143,6 @@ const LoginPage: React.FC = () => {
         return;
       }
 
-      // Record successful login for enterprise security
-      loginRateLimiter.recordAttempt(clientId, true);
-
-      // Debug: Log the user types to see what we're getting
-      // Login successful - user data processed
-
-      // Your original working token setting with approval status
       setToken(
         token,
         refresh,
@@ -197,18 +158,12 @@ const LoginPage: React.FC = () => {
       );
       message.success('Login successful!');
 
-      // Your original working navigation - EXACTLY as it was
       if (isPasswordResetRequired) {
         navigate('/reset-password');
       } else {
         navigate('/dashboard');
       }
     } catch (error: any) {
-      // Record failed attempt for enterprise security
-      const clientId = getClientFingerprint();
-      loginRateLimiter.recordAttempt(clientId, false);
-
-      // Enterprise error handling with security logging
       const description = error.response?.data?.detail || 'Invalid username or password.';
       message.error(description);
     } finally {

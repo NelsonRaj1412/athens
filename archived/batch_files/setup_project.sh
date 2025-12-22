@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 echo "Setting up project dependencies..."
 echo "================================="
@@ -14,7 +15,7 @@ echo "✓ Backend setup complete"
 
 # Setup frontend
 echo "Setting up frontend..."
-cd frontedn
+cd frontend
 npm install --legacy-peer-deps
 cd ..
 echo "✓ Frontend setup complete"

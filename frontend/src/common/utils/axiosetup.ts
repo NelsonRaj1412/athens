@@ -3,8 +3,8 @@ import useAuthStore from '../store/authStore';
 import refreshToken from './tokenrefresh';
 import { authFix } from './authenticationFix';
 
-// Function to get CSRF token from cookies
-function getCsrfToken() {
+// Function to get CSRF token from cookies with validation
+function getCsrfToken(): string {
   const name = 'csrftoken=';
   const decodedCookie = decodeURIComponent(document.cookie);
   const cookieArray = decodedCookie.split(';');
@@ -12,35 +12,27 @@ function getCsrfToken() {
   for (let i = 0; i < cookieArray.length; i++) {
     let cookie = cookieArray[i].trim();
     if (cookie.indexOf(name) === 0) {
-      return cookie.substring(name.length, cookie.length);
+      const token = cookie.substring(name.length, cookie.length);
+      // Validate token format (basic validation)
+      if (token && token.length > 10 && /^[a-zA-Z0-9]+$/.test(token)) {
+        return token;
+      }
     }
   }
   return '';
 }
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://prozeal.athenas.co.in',
   withCredentials: true,
-  timeout: parseInt(import.meta.env.VITE_API_TIMEOUT) || 30000,
+  timeout: parseInt(import.meta.env.VITE_API_TIMEOUT as string) || 30000,
   headers: {
     'Content-Type': 'application/json',
-    'X-Requested-With': 'XMLHttpRequest',
   }
 });
 
 api.interceptors.request.use(
   (config) => {
-    // Force override any backend:8000 URLs
-    if (config.url && config.url.includes('backend:8000')) {
-      config.url = config.url.replace('http://backend:8000', 'http://localhost:8000');
-      config.url = config.url.replace('https://backend:8000', 'http://localhost:8000');
-    }
-    
-    // Ensure baseURL is correct
-    if (!config.baseURL || config.baseURL.includes('backend:')) {
-      config.baseURL = 'http://localhost:8000';
-    }
-
     // Add authorization token if available
     const token = useAuthStore.getState().token;
     if (token && config.headers) {
@@ -108,14 +100,17 @@ api.interceptors.response.use(
         originalRequest.url?.includes('/respond')
       );
 
-    console.log('Response interceptor error:', {
-      url: originalRequest.url,
-      status: error.response?.status,
-      isAuthRequest,
-      isParticipantResponseRequest,
-      errorData: error.response?.data,
-      errorDetail: error.response?.data?.detail
-    });
+    // Remove debug logging in production
+    if (import.meta.env.DEV) {
+      console.log('Response interceptor error:', {
+        url: originalRequest.url,
+        status: error.response?.status,
+        isAuthRequest,
+        isParticipantResponseRequest,
+        errorData: error.response?.data,
+        errorDetail: error.response?.data?.detail
+      });
+    }
 
     // Only try to refresh token for 401 errors on non-auth requests
     // But don't auto-logout for participant response requests - let the component handle it

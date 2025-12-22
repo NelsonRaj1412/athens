@@ -60,7 +60,7 @@ const MOCK_ESG_DATA = {
     sustainability_progress: 91.8,
     risk_management_score: 96.3,
     compliance_rate: 98.7,
-    certification_level: 'Platinum'
+    certification_level: 'Gold'
   },
   environmental: {
     total_aspects: 156,

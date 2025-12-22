@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Login Test</title>
+</head>
+<body>
+    <h1>Simple Login Test</h1>
+    <form id="loginForm">
+        <input type="text" id="username" placeholder="Username" value="master">
+        <input type="password" id="password" placeholder="Password" value="master@123">
+        <button type="submit">Login</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const result = document.getElementById('result');
+            
+            try {
+                // Simple login test
+                const response = await fetch('http://72.60.218.167:8000/authentication/login/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = `<h2 style="color: green;">✅ SUCCESS!</h2>
+                                      <p>Username: ${data.username}</p>
+                                      <p>User Type: ${data.usertype}</p>
+                                      <p>Token: ${data.access.substring(0, 50)}...</p>`;
+                } else {
+                    result.innerHTML = `<h2 style="color: red;">❌ FAILED!</h2>
+                                      <p>Error: ${data.detail || 'Unknown error'}</p>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<h2 style="color: red;">❌ ERROR!</h2>
+                                  <p>Network Error: ${error.message}</p>`;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -22,10 +22,11 @@ def create_master_admin():
         return
     
     # Create master admin
+    password = os.environ['ADMIN_PASSWORD']
     user = CustomUser.objects.create_user(
         username='masteradmin',
         email='admin@ehs.com',
-        password='admin123',
+        password=password,
         first_name='Master',
         last_name='Admin',
         admin_type='masteradmin',

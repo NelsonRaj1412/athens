@@ -16,6 +16,7 @@ import string
 from django.utils.html import escape
 from django.core.exceptions import ValidationError
 from .security_utils import sanitize_log_input, secure_filename, validate_file_path, safe_join
+from .password_utils import generate_secure_password, validate_password_strength
 from .file_handlers import SecureFileHandler
 
 from django.db import models

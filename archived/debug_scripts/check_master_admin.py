@@ -19,10 +19,11 @@ else:
     print("Creating master admin...")
     
     # Create master admin
+    password = os.environ['ADMIN_PASSWORD']
     master = CustomUser.objects.create_user(
         username='master_admin',
         email='master@company.com',
-        password='admin123',
+        password=password,
         admin_type='master',
         is_active=True,
         is_staff=True,

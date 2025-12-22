@@ -40,16 +40,13 @@ export const useWebSocketNotificationService = () => {
 
     try {
       const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      // Use the backend URL from environment variables or default to localhost:8001
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001';
+      // Use the current domain for WebSocket connection
+      const wsHost = window.location.hostname === 'prozeal.athenas.co.in' 
+        ? 'prozeal.athenas.co.in' 
+        : '72.60.218.167:8001';
 
-      const wsHost = backendUrl.replace(/^https?:\/\//, '');
-
-      // Check if the URL already has a port specified
-      const hasPort = wsHost.includes(':');
-
-      // Ensure the URL matches the backend's expected format - FIXED PATH
-      const url = `${wsProtocol}://${wsHost}${hasPort ? '' : ':8001'}/ws/notifications/?token=${token}`;
+      // Ensure the URL matches the backend's expected format
+      const url = `${wsProtocol}://${wsHost}/ws/notifications/?token=${token}`;
 
       return url;
     } catch (error) {
@@ -188,28 +185,20 @@ export const useWebSocketNotificationService = () => {
     
     try {
       const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
-      const wsHost = backendUrl.replace(/^https?:\/\//, '');
-      const hasPort = wsHost.includes(':');
+      const wsHost = '72.60.218.167:8001';
       
-      // Try different possible WebSocket URLs - FIXED PATHS
-      const urls = [
-        `${wsProtocol}://${wsHost}${hasPort ? '' : ':8001'}/ws/notifications/?token=${token}`,
-        `${wsProtocol}://${wsHost}/ws/notifications/?token=${token}`
-      ];
+      // Try the correct WebSocket URL
+      const url = `${wsProtocol}://${wsHost}/ws/notifications/?token=${token}`;
       
-      urls.forEach((url, index) => {
-        
-        const testSocket = new WebSocket(url);
-        
-        testSocket.onopen = () => {
-          // Close the test socket after successful connection
-          setTimeout(() => testSocket.close(), 1000);
-        };
-        
-        testSocket.onerror = (error) => {
-        };
-      });
+      const testSocket = new WebSocket(url);
+      
+      testSocket.onopen = () => {
+        // Close the test socket after successful connection
+        setTimeout(() => testSocket.close(), 1000);
+      };
+      
+      testSocket.onerror = (error) => {
+      };
     } catch (error) {
     }
   };

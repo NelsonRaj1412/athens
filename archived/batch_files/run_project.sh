@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 echo "Quick Project Runner"
 echo "==================="
@@ -18,9 +19,9 @@ else
 fi
 
 # Check if frontend dependencies exist
-if [ ! -d "frontedn/node_modules" ]; then
+if [ ! -d "frontend/node_modules" ]; then
     echo "Frontend dependencies not found. Installing..."
-    cd frontedn
+    cd frontend
     npm install --legacy-peer-deps
     cd ..
     echo "✓ Frontend setup complete"

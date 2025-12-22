@@ -106,6 +106,9 @@ class CustomUserManager(BaseUserManager):
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     USER_TYPE_CHOICES = [
+        ('master', 'Master'),
+        ('superadmin', 'Super Admin'),
+        ('masteradmin', 'Master Admin'),
         ('projectadmin', 'Project Admin'),
         ('adminuser', 'Admin User'),
     ]

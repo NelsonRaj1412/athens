@@ -11,14 +11,15 @@ python3 manage.py migrate --run-syncdb
 
 # Create superuser
 echo "Creating superuser..."
-echo "from django.contrib.auth import get_user_model
+echo "import os
+from django.contrib.auth import get_user_model
 User = get_user_model()
 if not User.objects.filter(username='admin').exists():
-    User.objects.create_superuser('admin', 'admin@test.com', 'admin123')
-    print('Superuser created: admin/admin123')
+    User.objects.create_superuser('admin', 'admin@test.com', os.environ['ADMIN_PASSWORD'])
+    print('Superuser created: admin / [password from ADMIN_PASSWORD env var]')
 else:
     print('Superuser already exists')
 " | python3 manage.py shell
 
 echo "✅ Backend fixed!"
-echo "Login: admin / admin123"
+echo "Login: admin / [password from ADMIN_PASSWORD env var]"

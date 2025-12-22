@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # ============================================================================
 # EHS Management System - Local Development Startup Script
@@ -63,7 +64,7 @@ BACKEND_PID=$!
 sleep 3
 
 # Navigate to frontend directory
-cd ../frontedn
+cd ../frontend
 
 # Check if node_modules exists
 if [ ! -d "node_modules" ]; then

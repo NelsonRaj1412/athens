@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 echo "Production Deployment Script for Hostinger KVM2"
 echo "==============================================="
@@ -29,7 +30,7 @@ pip install -r requirements.txt
 pip install gunicorn
 
 # Frontend setup
-cd ../frontedn
+cd ../frontend
 npm install --production
 npm run build
 
@@ -91,7 +92,7 @@ server {
     
     # Frontend
     location / {
-        root /var/www/ehs-system/frontedn/dist;
+        root /var/www/ehs-system/frontend/dist;
         try_files \$uri \$uri/ /index.html;
     }
     

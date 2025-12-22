@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Production Deployment Script for Athens EHS System
 # Run this script on your production server after git pull
@@ -23,6 +24,10 @@ print_warning() {
 print_error() {
     echo -e "${RED}❌ $1${NC}"
 }
+
+# Environment variables with defaults
+DB_USER_PASSWORD=${DB_USER_PASSWORD:-strongpassword123}
+ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
@@ -63,7 +68,7 @@ sudo -u postgres psql -c "SELECT 1 FROM pg_database WHERE datname = 'athens_db';
 
 sudo -u postgres psql -c "SELECT 1 FROM pg_user WHERE usename = 'athens_user';" | grep -q 1 || {
     print_status "Creating user athens_user..."
-    sudo -u postgres psql -c "CREATE USER athens_user WITH PASSWORD 'strongpassword123';"
+    sudo -u postgres psql -c "CREATE USER athens_user WITH PASSWORD '$DB_USER_PASSWORD';"
 }
 
 # Grant privileges
@@ -95,8 +100,8 @@ print_status "Creating admin user..."
 python manage.py shell -c "
 from authentication.models import CustomUser
 if not CustomUser.objects.filter(username='admin').exists():
-    CustomUser.objects.create_superuser('admin', 'admin@example.com', 'admin123')
-    print('Admin user created: admin/admin123')
+    CustomUser.objects.create_superuser('admin', 'admin@example.com', '$ADMIN_PASSWORD')
+    print('Admin user created: admin/[HIDDEN]')
 else:
     print('Admin user already exists')
 "

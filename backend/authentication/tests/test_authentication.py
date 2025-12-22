@@ -1,7 +1,10 @@
 import pytest
+import os
 from rest_framework.test import APIClient
 from django.urls import reverse
 from authentication.models import CustomUser
+
+TEST_PASSWORD = os.environ.get('TEST_PASSWORD', 'masterpassword')
 
 @pytest.mark.django_db
 class TestAuthentication:
@@ -10,7 +13,7 @@ class TestAuthentication:
         self.client = APIClient()
         self.master_admin = CustomUser.objects.create_user(
             username='masteradmin',
-            password='masterpassword',
+            password=TEST_PASSWORD,
             admin_type='client',
             company_name='Master Company',
             registered_address='Master Address',
@@ -21,7 +24,7 @@ class TestAuthentication:
 
     def test_login_master_admin(self):
         url = reverse('token_obtain_pair')
-        response = self.client.post(url, {'username': 'masteradmin', 'password': 'masterpassword'}, format='json')
+        response = self.client.post(url, {'username': 'masteradmin', 'password': TEST_PASSWORD}, format='json')
         assert response.status_code == 200
         assert 'access' in response.data or 'token' in response.data
         assert 'refresh' in response.data
@@ -29,7 +32,7 @@ class TestAuthentication:
     def test_logout(self):
         login_url = reverse('token_obtain_pair')
         logout_url = reverse('auth_logout')
-        login_response = self.client.post(login_url, {'username': 'masteradmin', 'password': 'masterpassword'}, format='json')
+        login_response = self.client.post(login_url, {'username': 'masteradmin', 'password': TEST_PASSWORD}, format='json')
         refresh_token = login_response.data.get('refresh')
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + login_response.data.get('access'))
         response = self.client.post(logout_url, {'refresh': refresh_token}, format='json')
