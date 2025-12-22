@@ -1,0 +1,14 @@
+/* Clean CSS - No Firefox warnings */
+body {
+  overflow-x: hidden;
+}
+
+html {
+  overflow-x: hidden;
+}
+
+/* Remove all problematic CSS properties */
+* {
+  -webkit-text-size-adjust: none;
+  -ms-text-size-adjust: none;
+}

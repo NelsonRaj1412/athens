@@ -9,6 +9,7 @@ import {
 } from '@ant-design/icons';
 import api from '@common/utils/axiosetup';
 import { App } from 'antd';
+import DigitalSignature from '../../../components/DigitalSignature';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -29,6 +30,7 @@ interface TemplateInfo {
     designation: string;
     company_name: string;
     has_company_logo: boolean;
+    logo_url?: string;
   };
   has_existing_template: boolean;
   template_data?: SignatureTemplateData;
@@ -289,20 +291,42 @@ const DigitalSignatureTemplate: React.FC<DigitalSignatureTemplateProps> = ({
             Close
           </Button>
         ]}
-        width={600}
+        width={700}
+        centered
       >
-        {templateUrl && (
-          <div style={{ textAlign: 'center' }}>
-            <Image
-              src={templateUrl}
-              alt="Signature Template"
-              style={{ maxWidth: '100%' }}
-            />
+        {templateUrl && templateInfo ? (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <div style={{ 
+              border: '1px solid #d9d9d9', 
+              borderRadius: '8px', 
+              padding: '16px', 
+              backgroundColor: '#fafafa',
+              display: 'inline-block',
+              maxWidth: '100%'
+            }}>
+              <DigitalSignature 
+                signerName={templateInfo.user_data.full_name || 'User'}
+                designation={templateInfo.user_data.designation}
+                companyName={templateInfo.user_data.company_name}
+                date={new Date().toLocaleDateString('en-CA')}
+                time={new Date().toLocaleTimeString('en-GB')}
+                logoUrl={templateInfo.user_data.logo_url}
+              />
+            </div>
             <div style={{ marginTop: 16 }}>
               <Text type="secondary">
                 This template will be used for document signing with automatic date/time filling.
               </Text>
             </div>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '40px' }}>
+            <Alert
+              message="No Template Available"
+              description="The signature template could not be loaded."
+              type="warning"
+              showIcon
+            />
           </div>
         )}
       </Modal>

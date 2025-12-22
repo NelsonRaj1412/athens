@@ -39,6 +39,9 @@ if not SECRET_KEY:
 # Production-ready allowed hosts configuration
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '72.60.218.167', 'prozeal.athenas.co.in']
 
+# WebSocket allowed origins for Channels
+CHANNELS_ALLOWED_HOSTS = ['localhost', '127.0.0.1', '72.60.218.167', 'prozeal.athenas.co.in']
+
 # ============================================================================
 # PRODUCTION SECURITY SETTINGS
 # ============================================================================

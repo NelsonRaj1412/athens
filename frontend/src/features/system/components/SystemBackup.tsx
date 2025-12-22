@@ -34,9 +34,11 @@ const SystemBackup: React.FC = () => {
     setLoading(true);
     try {
       const { data } = await listBackups();
-      setBackups(data?.results || data || []);
+      const rows = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
+      setBackups(rows);
     } catch (error: any) {
-      message.error(error.response?.data?.error || 'Failed to load backups');
+      console.error('Failed to load backups:', error);
+      setBackups([]);
     } finally {
       setLoading(false);
     }

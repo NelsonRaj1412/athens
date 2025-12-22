@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Alert, Typography, Space, Image, Modal, Spin, App } from 'antd';
+import { Card, Button, Alert, Typography, Space, Modal, Spin, App } from 'antd';
 import { 
   FileImageOutlined, 
   EyeOutlined, 
@@ -9,6 +9,7 @@ import {
   InfoCircleOutlined
 } from '@ant-design/icons';
 import api from '@common/utils/axiosetup';
+import DigitalSignature from '../../../components/DigitalSignature';
 
 const { Text, Title } = Typography;
 
@@ -21,6 +22,7 @@ interface AdminTemplateInfo {
     designation: string;
     company_name: string;
     has_company_logo: boolean;
+    logo_url?: string;
   };
   has_existing_template: boolean;
   template_data?: any;
@@ -158,6 +160,7 @@ const AdminDigitalSignatureTemplate: React.FC<AdminDigitalSignatureTemplateProps
         </Space>
       }
       className="mb-6"
+      style={{ marginBottom: 0 }}
       extra={
         has_existing_template && templateUrl && (
           <Button 
@@ -272,23 +275,31 @@ const AdminDigitalSignatureTemplate: React.FC<AdminDigitalSignatureTemplateProps
             Close
           </Button>
         ]}
-        width={600}
+        width={700}
+        centered
       >
         {templateUrl ? (
-          <div style={{ textAlign: 'center' }}>
-            <Image
-              src={templateUrl}
-              alt="Admin Signature Template"
-              style={{ maxWidth: '100%' }}
-              fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+FgYxN"
-              onError={(e) => {
-                console.error('Failed to load signature template image:', templateUrl);
-                message.error('Failed to load signature template image. Please try regenerating the template.');
-              }}
-            />
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <div style={{ 
+              border: '1px solid #d9d9d9', 
+              borderRadius: '8px', 
+              padding: '16px', 
+              backgroundColor: '#fafafa',
+              display: 'inline-block',
+              maxWidth: '100%'
+            }}>
+              <DigitalSignature 
+                signerName={user_data.full_name || 'Admin User'}
+                designation={user_data.designation}
+                companyName={user_data.company_name}
+                date={new Date().toLocaleDateString('en-CA')}
+                time={new Date().toLocaleTimeString('en-GB')}
+                logoUrl={user_data.logo_url}
+              />
+            </div>
             <div style={{ marginTop: 16 }}>
               <Text type="secondary">
-                This admin template will be used for document signing with automatic date/time filling.
+                Professional digital signature layout with proper spacing and no overlap.
               </Text>
             </div>
           </div>

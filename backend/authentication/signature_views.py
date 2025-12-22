@@ -158,6 +158,11 @@ class SignatureTemplateDataView(APIView):
 
             company_name = generator._get_company_name(request.user)
             company_logo = generator._get_company_logo(request.user)
+            
+            # Get logo URL if available
+            logo_url = None
+            if company_logo:
+                logo_url = request.build_absolute_uri(company_logo.url)
 
             if not company_name:
                 missing_fields.append('company_name')
@@ -169,8 +174,10 @@ class SignatureTemplateDataView(APIView):
                 'user_data': {
                     'full_name': f"{request.user.name or ''} {request.user.surname or ''}".strip(),
                     'designation': request.user.designation or '',
+                    'employee_id': getattr(request.user, 'employee_id', '') or '',
                     'company_name': company_name,
-                    'has_company_logo': bool(company_logo)
+                    'has_company_logo': bool(company_logo),
+                    'logo_url': logo_url
                 },
                 'has_existing_template': bool(user_detail.signature_template),
                 'template_data': user_detail.signature_template_data
@@ -327,6 +334,11 @@ class AdminSignatureTemplateDataView(APIView):
 
             company_name = generator._get_company_name(request.user)
             company_logo = generator._get_company_logo(request.user)
+            
+            # Get logo URL if available
+            logo_url = None
+            if company_logo:
+                logo_url = request.build_absolute_uri(company_logo.url)
 
             if not company_name:
                 missing_fields.append('company_name')
@@ -338,8 +350,10 @@ class AdminSignatureTemplateDataView(APIView):
                 'user_data': {
                     'full_name': f"{request.user.name or ''} {request.user.surname or ''}".strip(),
                     'designation': request.user.designation or '',
+                    'employee_id': getattr(request.user, 'employee_id', '') or '',
                     'company_name': company_name,
-                    'has_company_logo': bool(company_logo)
+                    'has_company_logo': bool(company_logo),
+                    'logo_url': logo_url
                 },
                 'has_existing_template': bool(admin_detail.signature_template),
                 'template_data': admin_detail.signature_template_data

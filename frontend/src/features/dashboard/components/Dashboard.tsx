@@ -13,12 +13,13 @@ import {
     ReadOutlined, FileTextOutlined, SafetyOutlined, FormOutlined, PlusOutlined, ClockCircleOutlined,
     BarChartOutlined, SunOutlined, MoonOutlined, DesktopOutlined, AuditOutlined, RocketOutlined,
     ApartmentOutlined, DeleteOutlined, ArrowRightOutlined, CheckCircleOutlined, ExperimentOutlined,
-    EyeOutlined
+    EyeOutlined, DatabaseOutlined
 } from '@ant-design/icons';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import useAuthStore from '@common/store/authStore';
 import { useApprovalStatus } from '../../../common/hooks/useApprovalStatus';
+import { useResponsiveSidebar } from '@common/hooks/useResponsive';
 
 import api from '@common/utils/axiosetup';
 import { useNotificationsContext } from '@common/contexts/NotificationsContext';
@@ -44,7 +45,14 @@ const Dashboard: React.FC = () => {
     // =============================================================================
     const { theme, setTheme, effectiveTheme } = useTheme();
     const { approvalStatus, loading: approvalLoading, needsApproval, hasSubmittedDetails, isApproved, refetch: refetchApprovalStatus } = useApprovalStatus();
-    const [collapsed, setCollapsed] = useState(window.innerWidth < 1024);
+    const { 
+        collapsed, 
+        mobileVisible, 
+        toggleSidebar, 
+        closeMobileSidebar,
+        isMobile,
+        isTablet 
+    } = useResponsiveSidebar();
     const [pendingUsers, setPendingUsers] = useState<any[]>([]);
     const [userToApprove, setUserToApprove] = useState<any | null>(null);
     const [adminToApprove, setAdminToApprove] = useState<any | null>(null);
@@ -126,14 +134,37 @@ const Dashboard: React.FC = () => {
 
     const handleMenuClick = (e: any) => navigate(e.key);
 
-    const getMenuItems = (): MenuItem[] => {
-        // Use centralized menu configuration with approval status
-        return getMenuItemsForUser(
-            usertype || undefined,
-            django_user_type || undefined,
-            isApproved,
-            hasSubmittedDetails
-        );
+    const getMenuItems = () => {
+        if (usertype === 'master') {
+            return [
+                { key: '/dashboard', icon: <DashboardOutlined />, label: 'Overview' },
+                { key: '/dashboard/projects', icon: <ProjectOutlined />, label: 'Projects' },
+                { key: '/dashboard/adminusers', icon: <TeamOutlined />, label: 'Admin Users' },
+                { key: '/dashboard/pending-approvals', icon: <ClockCircleOutlined />, label: 'Pending Approvals' },
+                {
+                    key: 'system',
+                    icon: <SettingOutlined />,
+                    label: 'System Management',
+                    children: [
+                        { key: '/dashboard/system/settings', icon: <SettingOutlined />, label: 'Settings' },
+                        { key: '/dashboard/system/logs', icon: <FileTextOutlined />, label: 'System Logs' },
+                        { key: '/dashboard/system/backup', icon: <DatabaseOutlined />, label: 'Backup' },
+                    ]
+                }
+            ];
+        }
+        
+        if (django_user_type === 'projectadmin') {
+            return [
+                { key: '/dashboard', icon: <DashboardOutlined />, label: 'Overview' },
+                { key: '/dashboard/users', icon: <UserOutlined />, label: 'Users' },
+                { key: '/dashboard/admindetail', icon: <UserOutlined />, label: 'Admin Detail' },
+            ];
+        }
+        
+        return [
+            { key: '/dashboard', icon: <DashboardOutlined />, label: 'Overview' },
+        ];
     };
 
 
@@ -325,12 +356,6 @@ const Dashboard: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
-    useEffect(() => {
-        const handleResize = () => setCollapsed(window.innerWidth < 1024);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
     // Removed fetchUserData call as function was not defined
 
     // Show loading overlay during logout to prevent flash
@@ -359,52 +384,65 @@ const Dashboard: React.FC = () => {
 
     return (
         <Layout className="dashboard-layout !bg-color-bg-base">
-            <Sider
-                collapsible
-                collapsed={collapsed}
-                width={250}
-                collapsedWidth={88}
-                trigger={null}
-                theme={effectiveTheme}
-                className="dashboard-sidebar !border-r !border-color-border flex flex-col !h-screen !overflow-hidden"
-                style={{ height: '100vh', position: 'fixed', left: 0, top: 0, bottom: 0 }}
+            {/* Mobile/Tablet Overlay */}
+            {(isMobile || isTablet) && mobileVisible && (
+                <div 
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        zIndex: 999
+                    }}
+                    onClick={closeMobileSidebar}
+                />
+            )}
+            
+            <div
+                style={{ 
+                    position: 'fixed',
+                    top: 0,
+                    left: (isMobile || isTablet) ? (mobileVisible ? 0 : -250) : 0,
+                    bottom: 0,
+                    width: (isMobile || isTablet) ? 250 : (collapsed ? 80 : 250),
+                    minWidth: (isMobile || isTablet) ? 250 : (collapsed ? 80 : 250),
+                    zIndex: (isMobile || isTablet) ? 1001 : 50,
+                    backgroundColor: effectiveTheme === 'dark' ? '#001529' : '#fff',
+                    borderRight: '1px solid #f0f0f0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100vh',
+                    overflow: 'hidden',
+                    transition: 'all 0.3s ease'
+                }}
             >
-                <div className="flex h-20 items-center gap-3 px-6 flex-shrink-0">
-                        <div className="flex h-24 w-24 items-center justify-center rounded-lg bg-white shadow-sm border border-gray-200 flex-shrink-0">
-                        {companyLogoUrl ? (
-                          <img
-                            src={companyLogoUrl}
-                            alt="Company Logo"
-                            className="h-full w-full object-contain p-2"
-                            style={{
-                              display: 'block',
-                              width: '100%',
-                              height: '100%',
-                              maxWidth: '100%',
-                              maxHeight: '100%'
-                            }}
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                        ) : (
-                          <ApartmentOutlined className="text-2xl text-gray-600" />
-                        )}
-                    </div>
-                    {!collapsed && (
-                    <div className="flex items-center gap-2">
-                        <span className="font-bold text-xl text-color-text-base whitespace-nowrap">{companyName}</span>
-                        <Button 
-                            type="text" 
-                            size="small" 
-                            icon={<EyeOutlined />}
-                            className="text-color-text-muted hover:text-color-primary"
-                            title="Preview Logo"
-                        />
-                    </div>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: collapsed && !(isMobile || isTablet) ? 'center' : 'space-between', padding: collapsed && !(isMobile || isTablet) ? '16px 8px' : '16px 24px', borderBottom: '1px solid #f0f0f0' }}>
+                    {collapsed && !(isMobile || isTablet) ? (
+                        <div style={{ width: 40, height: 40, backgroundColor: '#f0f0f0', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <ApartmentOutlined style={{ fontSize: 20, color: '#666' }} />
+                        </div>
+                    ) : (
+                        <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ width: 40, height: 40, backgroundColor: '#f0f0f0', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <ApartmentOutlined style={{ fontSize: 20, color: '#666' }} />
+                                </div>
+                                <span style={{ fontWeight: 600, fontSize: 16 }}>{companyName}</span>
+                            </div>
+                            {(isMobile || isTablet) && (
+                                <Button 
+                                    type="text" 
+                                    icon={<MenuFoldOutlined />} 
+                                    onClick={closeMobileSidebar}
+                                    style={{ padding: 8 }}
+                                />
+                            )}
+                        </>
+                    )}
                 </div>
-                <div className="p-3 flex-shrink-0">
+                <div className="p-3" style={{ flexShrink: 0, display: collapsed && !(isMobile || isTablet) ? 'none' : 'block' }}>
                     <div className="bg-color-bg-base p-4 rounded-lg">
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-3">
@@ -426,8 +464,8 @@ const Dashboard: React.FC = () => {
                         )}
                     </div>
                 </div>
-                <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0" style={{ maxHeight: 'calc(100vh - 220px)' }}>
-                    <div className="p-3">
+                <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minHeight: 0, maxHeight: collapsed && !(isMobile || isTablet) ? 'calc(100vh - 80px)' : 'calc(100vh - 220px)' }}>
+                    <div className={collapsed && !(isMobile || isTablet) ? "p-1" : "p-3"}>
                         <Menu
                             mode="inline"
                             selectedKeys={[selectedKey]}
@@ -435,26 +473,35 @@ const Dashboard: React.FC = () => {
                             className="!border-none !bg-transparent"
                             items={getMenuItems()}
                             style={{ height: 'auto', borderRight: 0 }}
+                            inlineCollapsed={collapsed && !(isMobile || isTablet)}
                         />
                     </div>
                 </div>
-                {!collapsed && (
-                    <div className="p-4 flex-shrink-0">
+                {!(isMobile || isTablet) && !collapsed && (
+                    <div style={{ padding: 16, flexShrink: 0 }}>
                         <Button
                             block
                             size="large"
                             type="primary"
                             icon={<RocketOutlined />}
-                            className="!font-semibold !bg-[linear-gradient(90deg,var(--gradient-start),var(--gradient-end))] !border-none"
+                            style={{
+                                fontWeight: 600,
+                                background: 'linear-gradient(90deg, var(--gradient-start), var(--gradient-end))',
+                                border: 'none'
+                            }}
                         >
                             Activate Pro Version
                         </Button>
                     </div>
                 )}
-            </Sider>
-            <Layout className="!bg-transparent transition-all duration-300 h-screen flex flex-col" style={{ marginLeft: collapsed ? 88 : 250 }}>
-                <Header className="dashboard-header !px-6 flex justify-between items-center !h-20 !bg-color-bg-base !border-b !border-color-border" style={{ left: collapsed ? 88 : 250 }}>
-                <div> <Button type="text" icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={() => setCollapsed(!collapsed)} className="!h-10 !w-10 !text-xl !text-color-text-muted" /> </div>
+            </div>
+            <Layout className="!bg-transparent transition-all duration-300 h-screen flex flex-col" style={{ 
+                marginLeft: (isMobile || isTablet) ? 0 : (collapsed ? 80 : 250)
+            }}>
+                <Header className="dashboard-header !px-6 flex justify-between items-center !h-20 !bg-color-bg-base !border-b !border-color-border" style={{ 
+                    left: (isMobile || isTablet) ? 0 : (collapsed ? 80 : 250)
+                }}>
+                <div> <Button type="text" icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={toggleSidebar} className="!h-10 !w-10 !text-xl !text-color-text-muted" /> </div>
                 <div className="flex items-center gap-4">
                     <Dropdown dropdownRender={() => (
                         <Card className="w-80" bodyStyle={{ padding: 0 }}>

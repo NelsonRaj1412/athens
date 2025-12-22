@@ -39,17 +39,18 @@ export const useWebSocketNotificationService = () => {
     }
 
     try {
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      // Use the current domain for WebSocket connection
-      const wsHost = window.location.hostname === 'prozeal.athenas.co.in' 
-        ? 'prozeal.athenas.co.in' 
-        : '72.60.218.167:8001';
+      // Always use wss for production domain, ws for IP
+      const isProduction = true;
+      const wsProtocol = isProduction ? 'wss' : 'ws';
+      const wsHost = 'prozeal.athenas.co.in';
 
       // Ensure the URL matches the backend's expected format
       const url = `${wsProtocol}://${wsHost}/ws/notifications/?token=${token}`;
+      console.log('WebSocket URL:', url);
 
       return url;
     } catch (error) {
+      console.error('WebSocket URL generation error:', error);
       // Return null to prevent connection attempts with invalid URLs
       return null;
     }
@@ -185,7 +186,7 @@ export const useWebSocketNotificationService = () => {
     
     try {
       const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      const wsHost = '72.60.218.167:8001';
+      const wsHost = 'prozeal.athenas.co.in';
       
       // Try the correct WebSocket URL
       const url = `${wsProtocol}://${wsHost}/ws/notifications/?token=${token}`;

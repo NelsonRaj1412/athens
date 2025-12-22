@@ -17,6 +17,8 @@ import ResetPassword from '@features/signin/components/resetpassword';
 import ProjectsList from '@features/project/components/ProjectsList';
 import AdminCreation from '@features/admin/components/AdminCreation';
 import AdminDetail from '@features/admin/components/AdminDetail';
+import AdminApprovalNew from '@features/admin/components/AdminApprovalNew';
+import PendingApprovals from '@features/admin/components/PendingApprovals';
 
 import UserList from '@features/user/components/UserList';
 import { default as UserDetail } from '@features/user/components/userdetail';
@@ -207,7 +209,8 @@ const App: React.FC = () => {
 
               {/* --- All your other routes are unchanged --- */}
               <Route path="projects" element={<RoleBasedRoute allowedRoles={['master']}><ProjectsList /></RoleBasedRoute>} />
-              <Route path="adminusers" element={<RoleBasedRoute allowedRoles={['master']}><AdminCreation /></RoleBasedRoute>} />
+              <Route path="adminusers" element={<RoleBasedRoute allowedRoles={['master']}><AdminApprovalNew /></RoleBasedRoute>} />
+              <Route path="admin-creation" element={<RoleBasedRoute allowedRoles={['master']}><AdminCreation /></RoleBasedRoute>} />
 
               {/* System Management Routes */}
               <Route path="system/settings" element={<RoleBasedRoute allowedRoles={['master']}><SystemSettings /></RoleBasedRoute>} />
@@ -215,6 +218,7 @@ const App: React.FC = () => {
               <Route path="system/backup" element={<RoleBasedRoute allowedRoles={['master']}><SystemBackup /></RoleBasedRoute>} />
 
               <Route path="admindetail" element={<RoleBasedRoute allowedRoles={['master', 'client', 'epc', 'contractor', 'contractor1', 'contractor2', 'contractor3', 'contractor4', 'contractor5', 'projectadmin']}><AdminDetail /></RoleBasedRoute>} />
+              <Route path="pending-approvals" element={<RoleBasedRoute allowedRoles={['master']}><PendingApprovals /></RoleBasedRoute>} />
               <Route path="users" element={<RoleBasedRoute allowedRoles={['client', 'epc', 'contractor', 'contractor1', 'contractor2', 'contractor3', 'contractor4', 'contractor5']}><UserList /></RoleBasedRoute>} />
               <Route path="userdetail" element={<RoleBasedRoute allowedRoles={['adminuser']}><UserDetail /></RoleBasedRoute>} />
               <Route path="profile" element={<ProfileWrapper />} />

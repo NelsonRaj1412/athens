@@ -1,0 +1,95 @@
+/* 
+ * CSS Conflict Eliminator - Load this LAST
+ * Overrides all external package conflicts
+ */
+
+/* ============================================================================
+ * MANTINE RESET - Disable all Mantine styles
+ * ============================================================================ */
+[data-mantine-color-scheme] * {
+  all: unset !important;
+}
+
+.mantine-root,
+.mantine-container,
+[class^="mantine-"] {
+  display: none !important;
+}
+
+/* ============================================================================
+ * ANT DESIGN SIDER COMPLETE OVERRIDE
+ * ============================================================================ */
+.ant-layout-sider {
+  position: static !important;
+  flex: none !important;
+  width: auto !important;
+  min-width: auto !important;
+  max-width: none !important;
+  background: transparent !important;
+  transition: none !important;
+}
+
+.ant-layout-sider-children {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.ant-layout-sider-trigger {
+  display: none !important;
+}
+
+.ant-layout-sider-collapsed {
+  width: auto !important;
+  min-width: auto !important;
+}
+
+/* ============================================================================
+ * STYLED COMPONENTS RESET
+ * ============================================================================ */
+[class*="sc-"] {
+  box-sizing: border-box !important;
+}
+
+/* ============================================================================
+ * FORCE CUSTOM SIDEBAR BEHAVIOR
+ * ============================================================================ */
+.dashboard-sidebar {
+  position: fixed !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 250px !important;
+  min-width: 250px !important;
+  max-width: 250px !important;
+  z-index: 50 !important;
+  background-color: #fff !important;
+  border-right: 1px solid #f0f0f0 !important;
+  transition: left 0.3s ease !important;
+}
+
+.dashboard-sidebar.ant-layout-sider-dark {
+  background-color: #001529 !important;
+  border-right: 1px solid #303030 !important;
+}
+
+/* Mobile/Tablet: Hidden by default */
+@media (max-width: 1024px) {
+  .dashboard-sidebar {
+    left: -250px !important;
+    z-index: 1001 !important;
+  }
+  
+  .dashboard-sidebar.mobile-visible {
+    left: 0 !important;
+  }
+}
+
+/* Desktop: Normal behavior */
+@media (min-width: 1025px) {
+  .dashboard-sidebar {
+    left: 0 !important;
+  }
+  
+  .dashboard-sidebar.collapsed {
+    left: -170px !important;
+  }
+}

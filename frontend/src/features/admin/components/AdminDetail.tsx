@@ -133,7 +133,7 @@ const AdminDetail: React.FC = () => {
 
           // Set photo if available
           if (adminToApprove.photo_url) {
-            const photoUrl = adminToApprove.photo_url.startsWith('http') ? adminToApprove.photo_url : `http://localhost:8000${adminToApprove.photo_url}`;
+            const photoUrl = adminToApprove.photo_url.startsWith('http') ? adminToApprove.photo_url : `${api.defaults.baseURL}${adminToApprove.photo_url}`;
             setFileList([{
               uid: '-1',
               name: 'profile_photo.png',
@@ -145,7 +145,7 @@ const AdminDetail: React.FC = () => {
 
           // Set logo if available
           if (adminToApprove.logo_url) {
-            const logoUrl = adminToApprove.logo_url.startsWith('http') ? adminToApprove.logo_url : `http://localhost:8000${adminToApprove.logo_url}`;
+            const logoUrl = adminToApprove.logo_url.startsWith('http') ? adminToApprove.logo_url : `${api.defaults.baseURL}${adminToApprove.logo_url}`;
             setFileListLogo([{
               uid: '-1',
               name: 'company_logo.png',
@@ -193,90 +193,49 @@ const AdminDetail: React.FC = () => {
           // Check for both 'epc' and 'epcuser' user types
           if (userType === 'epc' || userType === 'epcuser') {
             try {
-
               const companyResponse = await api.get('/authentication/companydetail/');
-
-              // Check localStorage for cached company logo if API doesn't have one
-              let logoUrl = companyResponse.data.company_logo;
-              if (!logoUrl) {
-                const cachedLogoUrl = localStorage.getItem('company_logo_url');
-                if (cachedLogoUrl) {
-                  logoUrl = cachedLogoUrl;
-                } else {
-                }
-              }
 
               if (companyResponse.data) {
                 const updatedFormData = { ...response.data };
                 let hasUpdates = false;
                 let updateMessages = [];
 
-                // Auto-fill PAN if not already set (company uses 'pan', admin uses 'pan_number')
-                let panValue = companyResponse.data.pan;
-                if (!panValue) {
-                  panValue = localStorage.getItem('company_pan');
-                  if (panValue) {
-                  }
-                }
-                if (!response.data.pan_number && panValue) {
-                  updatedFormData.pan_number = panValue;
+                // Auto-fill PAN if not already set
+                if (!response.data.pan_number && companyResponse.data.pan) {
+                  updatedFormData.pan_number = companyResponse.data.pan;
                   updateMessages.push('PAN');
                   hasUpdates = true;
                 }
 
-                // Auto-fill GST if not already set (company uses 'gst', admin uses 'gst_number')
-                let gstValue = companyResponse.data.gst;
-                if (!gstValue) {
-                  gstValue = localStorage.getItem('company_gst');
-                  if (gstValue) {
-                  }
-                }
-                if (!response.data.gst_number && gstValue) {
-                  updatedFormData.gst_number = gstValue;
+                // Auto-fill GST if not already set
+                if (!response.data.gst_number && companyResponse.data.gst) {
+                  updatedFormData.gst_number = companyResponse.data.gst;
                   updateMessages.push('GST');
                   hasUpdates = true;
                 }
 
                 // Auto-fill company logo if not already set
-                if (!response.data.logo_url && logoUrl) {
-
-                  // Ensure the URL is properly formatted
-                  let processedLogoUrl = logoUrl;
-                  if (processedLogoUrl && !processedLogoUrl.startsWith('http')) {
-                    // If it's a relative URL, make it absolute
-                    processedLogoUrl = `http://localhost:8000${processedLogoUrl.startsWith('/') ? '' : '/'}${processedLogoUrl}`;
-                  }
-
-
+                if (!response.data.logo_url && companyResponse.data.company_logo) {
                   const logoFileList = [{
                     uid: '-1',
                     name: 'company_logo.png',
                     status: 'done',
-                    url: processedLogoUrl,
-                    thumbUrl: processedLogoUrl,
+                    url: companyResponse.data.company_logo,
+                    thumbUrl: companyResponse.data.company_logo,
                   }];
                   setFileListLogo(logoFileList);
-                  // Also update the form field value for the Upload component
-                  updatedFormData.company_logo = logoFileList;
                   updateMessages.push('Logo');
                   hasUpdates = true;
-                } else if (!response.data.logo_url && !logoUrl) {
                 }
 
                 // Update form with auto-filled data
                 if (hasUpdates) {
                   form.setFieldsValue(updatedFormData);
                   message.info(`Company details (${updateMessages.join(', ')}) have been auto-filled from company settings`);
-                } else {
                 }
-              } else {
-                message.warning('No company details found. Please set up company details first.');
               }
             } catch (companyErr) {
-              if (companyErr.response?.status === 404) {
-                message.warning('Company details not found. Please set up company details first.');
-              } else {
-              }
+              // Ignore company detail errors for non-EPC users
             }
           }
         }
@@ -447,22 +406,25 @@ const AdminDetail: React.FC = () => {
 
       // Send notification to master admin only for initial submission
       if (currentUserId && !isApproved && !formSubmitted) {
-        // Get master admin ID from backend
-        const masterResponse = await api.get('/authentication/master-admin/');
-        if (masterResponse.data?.id) {
-          await sendNotification(String(masterResponse.data.id), {
+        try {
+          // Send notification to user ID 5 (the master admin)
+          await sendNotification('5', {
             title: 'Admin Details Submitted',
             message: `${values.name || 'An admin'} submitted details for approval.`,
             type: 'approval' as NotificationType,
             data: { 
               userId: currentUserId, 
-              user_id: currentUserId,  // Add both for compatibility
+              user_id: currentUserId,
               formType: 'admindetail',
               username: authUsername,
               admin_type: userType
             },
-            link: `/dashboard/admin-approval`
+            link: `/dashboard/admindetail`
           });
+          console.log('Notification sent to master admin');
+        } catch (notificationError) {
+          console.error('Failed to send notification:', notificationError);
+          // Don't fail the form submission if notification fails
         }
       }
 
@@ -671,27 +633,55 @@ const AdminDetail: React.FC = () => {
             />
           </Form.Item>
           <Form.Item label="Profile Photo">
-            <Upload
-              fileList={fileList}
-              onChange={handleUploadChange}
-              beforeUpload={(file) => {
-                // Validate file type and size
-                if (!file.type.startsWith('image/')) {
-                  message.error('Please upload a valid image file.');
+            {fileList.length > 0 ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '100px',
+                  height: '100px',
+                  border: '1px solid #d9d9d9',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  backgroundColor: '#fafafa'
+                }}>
+                  <img
+                    src={fileList[0].url || fileList[0].thumbUrl}
+                    alt="Profile Photo"
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </div>
+                <div style={{ color: '#52c41a', fontSize: '14px' }}>
+                  ✓ Profile photo uploaded
+                </div>
+              </div>
+            ) : (
+              <Upload
+                fileList={fileList}
+                onChange={handleUploadChange}
+                beforeUpload={(file) => {
+                  if (!file.type.startsWith('image/')) {
+                    message.error('Please upload a valid image file.');
+                    return false;
+                  }
+                  if (file.size > 5 * 1024 * 1024) {
+                    message.error('Image must be smaller than 5MB.');
+                    return false;
+                  }
                   return false;
-                }
-                if (file.size > 5 * 1024 * 1024) { // 5MB limit
-                  message.error('Image must be smaller than 5MB.');
-                  return false;
-                }
-                return false; // Prevent auto upload
-              }}
-              accept="image/*"
-              maxCount={1}
-              disabled={isReadOnly}
-            >
-              <Button icon={<UploadOutlined />} disabled={isReadOnly}>Upload Photo</Button>
-            </Upload>
+                }}
+                accept="image/*"
+                maxCount={1}
+                disabled={isReadOnly}
+              >
+                <Button icon={<UploadOutlined />} disabled={isReadOnly}>Upload Photo</Button>
+              </Upload>
+            )}
             {canEdit && (
               <Button 
                 type="link" 
@@ -737,30 +727,38 @@ const AdminDetail: React.FC = () => {
                       maxHeight: '100%',
                       objectFit: 'contain'
                     }}
-                    onError={(e) => {
-
-                      // Replace with a placeholder
-                      e.currentTarget.style.display = 'none';
-                      if (e.currentTarget.parentElement) {
-                        e.currentTarget.parentElement.innerHTML = `
-                          <div style="color: #ff4d4f; font-size: 12px; text-align: center; padding: 10px;">
-                            <div style="font-size: 24px; margin-bottom: 8px;">🏢</div>
-                            <div>Logo not found</div>
-                            <div style="font-size: 10px; color: #999; margin-top: 4px;">Check company details</div>
-                          </div>
-                        `;
-                      }
-                    }}
-                    onLoad={() => {
-                    }}
                   />
                 </div>
                 <div style={{ color: '#52c41a', fontSize: '14px' }}>
                   ✓ Auto-filled from company details
-                  <br />
-                  <small style={{ color: '#666', fontSize: '12px', wordBreak: 'break-all' }}>
-                    URL: {fileListLogo[0].url}
-                  </small>
+                </div>
+              </div>
+            ) : fileListLogo.length > 0 ? (
+              // Show uploaded logo for all users
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '100px',
+                  height: '100px',
+                  border: '1px solid #d9d9d9',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  backgroundColor: '#fafafa'
+                }}>
+                  <img
+                    src={fileListLogo[0].url || fileListLogo[0].thumbUrl}
+                    alt="Company Logo"
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </div>
+                <div style={{ color: '#52c41a', fontSize: '14px' }}>
+                  ✓ Company logo uploaded
                 </div>
               </div>
             ) : (userType === 'epc' || userType === 'epcuser') ? (
@@ -864,14 +862,14 @@ const AdminDetail: React.FC = () => {
 
       {/* Digital Signature Template Section - Only for non-master admins */}
       {userType !== 'master' && (
-        <div style={{ marginTop: 24 }}>
+        <Card style={{ marginTop: 24 }} title="Digital Signature Template">
           <AdminDigitalSignatureTemplate
             onTemplateCreated={() => {
               // Optionally refresh form data or show success message
               message.success('Signature template updated successfully');
             }}
           />
-        </div>
+        </Card>
       )}
 
       <Modal

@@ -55,9 +55,11 @@ class UserDetailRetrieveUpdateView(generics.RetrieveUpdateAPIView):
         # Security validation for uploaded files
         if 'photo' in self.request.FILES:
             photo_file = self.request.FILES['photo']
-            if photo_file.size > 5 * 1024 * 1024:  # 5MB limit
-                raise ValidationError({'photo': ['File size must be less than 5MB']})
+            if photo_file.size > 10 * 1024 * 1024:  # 10MB limit
+                from rest_framework.serializers import ValidationError
+                raise ValidationError({'photo': ['File size must be less than 10MB']})
             if not photo_file.content_type.startswith('image/'):
+                from rest_framework.serializers import ValidationError
                 raise ValidationError({'photo': ['File must be an image']})
         try:
             user_detail = serializer.save()
@@ -69,23 +71,25 @@ class UserDetailRetrieveUpdateView(generics.RetrieveUpdateAPIView):
                 user_detail.employee_id
             )
 
-            # Send notification to admin if this is a new complete submission
-            if has_submitted_details and not user_detail.is_approved and self.request.user.created_by:
-                try:
-                    from notifications.models import Notification
-                    Notification.objects.create(
-                        user=self.request.user.created_by,
-                        title="New User Details Submitted",
-                        message=f"{self.request.user.username} has submitted their user details for approval.",
-                        type="user_detail_submission",
-                        data={
-                            'user_id': self.request.user.id,
-                            'username': self.request.user.username,
-                            'user_detail_id': user_detail.id
-                        }
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to send user detail submission notification: {sanitize_log_input(str(e))}")
+        # Send notification to admin if this is a new complete submission
+        if has_submitted_details and not user_detail.is_approved and self.request.user.created_by:
+            try:
+                from .notification_utils import send_websocket_notification
+                send_websocket_notification(
+                    user_id=self.request.user.created_by.id,
+                    title="New User Details Submitted",
+                    message=f"{self.request.user.username} has submitted their user details for approval.",
+                    notification_type="user_detail_submission",
+                    data={
+                        'user_id': self.request.user.id,
+                        'username': self.request.user.username,
+                        'user_detail_id': user_detail.id,
+                        'formType': 'userdetail'
+                    },
+                    sender_id=self.request.user.id
+                )
+            except Exception as e:
+                logger.warning(f"Failed to send user detail submission notification: {sanitize_log_input(str(e))}")
 
         except Exception as e:
             logger.error(f"User detail save failed for {sanitize_log_input(self.request.user.username)}: {sanitize_log_input(str(e))}")
@@ -968,6 +972,23 @@ class CurrentAdminDetailView(APIView):
             gst_number = ''
             name = getattr(user, 'name', '')
 
+        # For EPC users, check master admin's company logo if no admin logo exists
+        if user.admin_type == 'epc' and not logo_url:
+            try:
+                master_admin = CustomUser.objects.filter(admin_type='master').first()
+                if master_admin:
+                    company_detail = CompanyDetail.objects.filter(user=master_admin).first()
+                    if company_detail and company_detail.company_logo:
+                        logo_url = company_detail.company_logo.url
+            except Exception as e:
+                logger.debug(f"Error getting master company logo: {sanitize_log_input(str(e))}")
+        
+        # Debug logging for client admin logo
+        if user.admin_type == 'client':
+            logger.debug(f"Client admin {sanitize_log_input(user.username)} logo_url: {logo_url}")
+            if 'admin_detail' in locals() and admin_detail:
+                logger.debug(f"Client admin has AdminDetail with logo: {bool(admin_detail.logo)}")
+
         # Get project information
         project_info = None
         if user.project:
@@ -1002,6 +1023,7 @@ class CurrentAdminDetailView(APIView):
             'is_approved': getattr(admin_detail, 'is_approved', False) if 'admin_detail' in locals() else False,
             'project': project_info,
         }
+        logger.debug(f"CurrentAdminDetailView response for {sanitize_log_input(user.username)}: logo_url={logo_url}")
         return Response(response_data, status=status.HTTP_200_OK)
 
 class CurrentUserProjectView(APIView):
@@ -1099,23 +1121,24 @@ class AdminDetailUpdateView(APIView):
         # Send notification to master admin if this is a new complete submission
         if has_submitted_details and not admin_detail.is_approved:
             try:
-                from notifications.models import Notification
+                from .notification_utils import send_websocket_notification
                 master_admin = CustomUser.objects.filter(admin_type='master').first()
                 if master_admin:
-                    Notification.objects.create(
-                        user=master_admin,
+                    send_websocket_notification(
+                        user_id=master_admin.id,
                         title="New Admin Details Submitted",
                         message=f"{user.username} ({user.admin_type}) has submitted their admin details for approval.",
-                        type="admin_detail_submission",
+                        notification_type="admin_detail_submission",
                         data={
                             'user_id': user.id,
-                            'userId': user.id,  # Add both for compatibility
+                            'userId': user.id,
                             'username': user.username,
                             'admin_type': user.admin_type,
                             'company_name': user.company_name,
                             'admin_detail_id': admin_detail.id,
-                            'formType': 'admindetail'  # Add formType for frontend filtering
-                        }
+                            'formType': 'admindetail'
+                        },
+                        sender_id=user.id
                     )
             except Exception as e:
                 logger.warning(f"Failed to send admin detail submission notification: {sanitize_log_input(str(e))}")
@@ -1223,6 +1246,67 @@ class MasterAdminResetAdminPasswordView(APIView):
             return Response({
                 "error": "Failed to reset password due to server error"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class AdminDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, user_id):
+        try:
+            user = CustomUser.objects.get(id=user_id, user_type='projectadmin')
+            
+            # Try to get AdminDetail
+            try:
+                admin_detail = AdminDetail.objects.get(user=user)
+                
+                # Use the serializer to get properly formatted data with full URLs
+                from .serializers import AdminDetailSerializer
+                serializer = AdminDetailSerializer(admin_detail, context={'request': request})
+                admin_detail_data = serializer.data
+                
+                # Combine user data with admin detail data
+                response_data = {
+                    'admin_detail': {
+                        'id': admin_detail.id,
+                        'name': admin_detail_data.get('name') or getattr(user, 'name', ''),
+                        'surname': getattr(user, 'surname', ''),
+                        'company_name': user.company_name,
+                        'registered_address': user.registered_address,
+                        'phone_number': admin_detail_data.get('phone_number', ''),
+                        'pan_number': admin_detail_data.get('pan_number', ''),
+                        'gst_number': admin_detail_data.get('gst_number', ''),
+                        'photo': admin_detail_data.get('photo'),
+                        'logo': admin_detail_data.get('logo'),
+                        'is_approved': admin_detail.is_approved,
+                        'created_at': admin_detail.created_at
+                    }
+                }
+                return Response(response_data, status=status.HTTP_200_OK)
+                
+            except AdminDetail.DoesNotExist:
+                # Return basic user data if no AdminDetail exists
+                response_data = {
+                    'admin_detail': {
+                        'id': None,
+                        'name': getattr(user, 'name', ''),
+                        'surname': getattr(user, 'surname', ''),
+                        'company_name': user.company_name,
+                        'registered_address': user.registered_address,
+                        'phone_number': '',
+                        'pan_number': '',
+                        'gst_number': '',
+                        'photo': None,
+                        'logo': None,
+                        'is_approved': False,
+                        'created_at': user.date_joined
+                    }
+                }
+                return Response(response_data, status=status.HTTP_200_OK)
+                
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'Admin user not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error in AdminDetailView for user {sanitize_log_input(str(user_id))}: {sanitize_log_input(str(e))}")
+            return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class AdminPendingDetailView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1596,16 +1680,18 @@ class AdminDetailApprovalView(APIView):
 
         # Send approval notification
         try:
-            from notifications.models import Notification
-            Notification.objects.create(
-                user=admin_detail.user,
+            from .notification_utils import send_websocket_notification
+            send_websocket_notification(
+                user_id=admin_detail.user.id,
                 title="Admin Details Approved",
                 message=f"Your admin details have been approved by {request.user.username}. You now have full access to the dashboard.",
-                type="admin_approval",
+                notification_type="admin_approval",
                 data={
                     'approved_by': request.user.username,
-                    'approved_at': timezone.now().isoformat()
-                }
+                    'approved_at': timezone.now().isoformat(),
+                    'formType': 'admindetail'
+                },
+                sender_id=request.user.id
             )
         except Exception as e:
             logger.warning(f"Failed to send approval notification: {sanitize_log_input(str(e))}")

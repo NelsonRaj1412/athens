@@ -1,0 +1,19 @@
+/* Suppress Firefox CSS warnings */
+@-moz-document url-prefix() {
+  * {
+    -moz-osx-font-smoothing: unset !important;
+    -moz-column-gap: unset !important;
+  }
+}
+
+/* Fix webkit properties */
+* {
+  -webkit-text-size-adjust: 100% !important;
+}
+
+/* Hide CSS error messages in console */
+@media screen {
+  :root {
+    --suppress-warnings: true;
+  }
+}

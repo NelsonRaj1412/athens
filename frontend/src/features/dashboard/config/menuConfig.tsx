@@ -335,25 +335,6 @@ export const getMenuItemsForUser = (
   hasSubmittedDetails: boolean = true
 ): MenuItem[] => {
 
-  // Master admin - full system access (exempt from approval requirements)
-  if (usertype === 'master') {
-    return [
-      { key: '/dashboard', icon: <DashboardOutlined />, label: 'Overview' },
-      { key: '/dashboard/projects', icon: <ProjectOutlined />, label: 'Projects' },
-      { key: '/dashboard/adminusers', icon: <TeamOutlined />, label: 'Admin Users' },
-      {
-        key: 'system',
-        icon: <SettingOutlined />,
-        label: 'System Management',
-        children: [
-          { key: '/dashboard/system/settings', icon: <SettingOutlined />, label: 'Settings' },
-          { key: '/dashboard/system/logs', icon: <FileTextOutlined />, label: 'System Logs' },
-          { key: '/dashboard/system/backup', icon: <DatabaseOutlined />, label: 'Backup' },
-        ]
-      }
-    ];
-  }
-
   // If user is not approved, return restricted menu
   if (!isApproved && (django_user_type === 'projectadmin' || django_user_type === 'adminuser')) {
     return getRestrictedMenuItems(django_user_type, hasSubmittedDetails);

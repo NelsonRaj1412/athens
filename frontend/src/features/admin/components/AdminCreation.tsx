@@ -250,11 +250,31 @@ const AdminCreation: React.FC = () => {
       return;
     }
 
-    // Handle password reset
+    // Handle admin update for existing admins
     if (adminData.created) {
-      setResetAdminType(adminType);
-      setResetAdminIndex(index ?? null);
-      setIsResetModalVisible(true);
+      setLoading(true);
+      try {
+        // Get user ID by username
+        const userResponse = await api.get(`/authentication/admin/user-by-username/${adminData.username}/`);
+        const userId = userResponse.data.id;
+        
+        // Update admin details
+        const updatePayload = {
+          company_name: adminData.companyName,
+          registered_address: adminData.registeredAddress
+        };
+        
+        await api.put(`/authentication/admin/update/${userId}/`, updatePayload);
+        message.success(`${adminType.toUpperCase()} Admin updated successfully`);
+        
+        // Refresh admin list
+        await fetchAdminsForProject(selectedProjectId);
+        
+      } catch (error: any) {
+        message.error(`Failed to update ${adminType} admin: ${error.response?.data?.error || error.message}`);
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
@@ -391,25 +411,39 @@ const AdminCreation: React.FC = () => {
               className="flex flex-col h-full bg-color-bg-base border-color-border"
               styles={{ body: { flexGrow: 1, display: 'flex', flexDirection: 'column' } }}
               extra={
-                clientAdmin.created && (
-                  <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDeleteAdmin('client')} />
-                )
+                <Space>
+                  {clientAdmin.created && (
+                    <Button 
+                      type="text" 
+                      icon={<KeyOutlined />} 
+                      onClick={() => {
+                        setResetAdminType('client');
+                        setResetAdminIndex(null);
+                        setIsResetModalVisible(true);
+                      }}
+                      title="Reset Password"
+                    />
+                  )}
+                  {clientAdmin.created && (
+                    <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDeleteAdmin('client')} />
+                  )}
+                </Space>
               }
             >
               <div className="flex-grow">
                 <Form.Item label="Username" required>
-                  <Input value={clientAdmin.username} onChange={(e) => handleInputChange('client', 'username', e.target.value)} disabled={clientAdmin.created} placeholder="Enter client admin username" prefix={<UserOutlined />} size="large"/>
+                  <Input value={clientAdmin.username} onChange={(e) => handleInputChange('client', 'username', e.target.value)} placeholder="Enter client admin username" prefix={<UserOutlined />} size="large"/>
                 </Form.Item>
                 <Form.Item label="Company Name" required>
-                  <Input value={clientAdmin.companyName} onChange={(e) => handleInputChange('client', 'companyName', e.target.value)} disabled={clientAdmin.created} placeholder="Enter company name" prefix={<BankOutlined />} size="large" />
+                  <Input value={clientAdmin.companyName} onChange={(e) => handleInputChange('client', 'companyName', e.target.value)} placeholder="Enter company name" prefix={<BankOutlined />} size="large" />
                 </Form.Item>
                 <Form.Item label="Registered Official Address" required>
-                  <Input.TextArea value={clientAdmin.registeredAddress} onChange={(e) => handleInputChange('client', 'registeredAddress', e.target.value)} disabled={clientAdmin.created} rows={3} placeholder="Enter registered official address" />
+                  <Input.TextArea value={clientAdmin.registeredAddress} onChange={(e) => handleInputChange('client', 'registeredAddress', e.target.value)} rows={3} placeholder="Enter registered official address" />
                 </Form.Item>
               </div>
               <Form.Item className="!mb-0 mt-auto">
                 <Button type="primary" onClick={() => createOrResetAdmin('client')} loading={loadingClient} icon={clientAdmin.created ? <KeyOutlined /> : <UserAddOutlined />} block size="large">
-                  {clientAdmin.created ? 'Reset Password' : 'Create Admin & Download Credentials'}
+                  {clientAdmin.created ? 'Update Admin Details' : 'Create Admin & Download Credentials'}
                 </Button>
               </Form.Item>
             </Card>
@@ -453,6 +487,18 @@ const AdminCreation: React.FC = () => {
                     />
                   )}
                   {epcAdmin.created && (
+                    <Button 
+                      type="text" 
+                      icon={<KeyOutlined />} 
+                      onClick={() => {
+                        setResetAdminType('epc');
+                        setResetAdminIndex(null);
+                        setIsResetModalVisible(true);
+                      }}
+                      title="Reset Password"
+                    />
+                  )}
+                  {epcAdmin.created && (
                     <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDeleteAdmin('epc')} />
                   )}
                 </Space>
@@ -460,7 +506,7 @@ const AdminCreation: React.FC = () => {
             >
               <div className="flex-grow">
                 <Form.Item label="Username" required>
-                  <Input value={epcAdmin.username} onChange={(e) => handleInputChange('epc', 'username', e.target.value)} disabled={epcAdmin.created} placeholder="Enter EPC admin username" prefix={<UserOutlined />} size="large"/>
+                  <Input value={epcAdmin.username} onChange={(e) => handleInputChange('epc', 'username', e.target.value)} placeholder="Enter EPC admin username" prefix={<UserOutlined />} size="large"/>
                 </Form.Item>
                 <Form.Item
                   label={
@@ -478,7 +524,6 @@ const AdminCreation: React.FC = () => {
                   <Input
                     value={epcAdmin.companyName}
                     onChange={(e) => handleInputChange('epc', 'companyName', e.target.value)}
-                    disabled={epcAdmin.created}
                     placeholder={companyDetails ? `Auto-fill available: ${companyDetails.company_name}` : "Enter company name"}
                     prefix={<BankOutlined />}
                     size="large"
@@ -500,7 +545,6 @@ const AdminCreation: React.FC = () => {
                   <Input.TextArea
                     value={epcAdmin.registeredAddress}
                     onChange={(e) => handleInputChange('epc', 'registeredAddress', e.target.value)}
-                    disabled={epcAdmin.created}
                     rows={3}
                     placeholder={companyDetails ? `Auto-fill available: ${companyDetails.registered_office_address}` : "Enter registered official address"}
                   />
@@ -508,7 +552,7 @@ const AdminCreation: React.FC = () => {
               </div>
               <Form.Item className="!mb-0 mt-auto">
                 <Button type="primary" onClick={() => createOrResetAdmin('epc')} loading={loadingEpc} icon={epcAdmin.created ? <KeyOutlined /> : <UserAddOutlined />} block size="large">
-                  {epcAdmin.created ? 'Reset Password' : 'Create Admin & Download Credentials'}
+                  {epcAdmin.created ? 'Update Admin Details' : 'Create Admin & Download Credentials'}
                 </Button>
               </Form.Item>
             </Card>
@@ -524,25 +568,39 @@ const AdminCreation: React.FC = () => {
                   className="flex flex-col h-full bg-color-bg-base border-color-border"
                   styles={{ body: { flexGrow: 1, display: 'flex', flexDirection: 'column' } }}
                   extra={
-                    contractor.created && (
-                      <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDeleteAdmin('contractor', index)} />
-                    )
+                    <Space>
+                      {contractor.created && (
+                        <Button 
+                          type="text" 
+                          icon={<KeyOutlined />} 
+                          onClick={() => {
+                            setResetAdminType('contractor');
+                            setResetAdminIndex(index);
+                            setIsResetModalVisible(true);
+                          }}
+                          title="Reset Password"
+                        />
+                      )}
+                      {contractor.created && (
+                        <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDeleteAdmin('contractor', index)} />
+                      )}
+                    </Space>
                   }
                 >
                   <div className="flex-grow">
                     <Form.Item label="Username" required>
-                      <Input value={contractor.username} onChange={(e) => handleInputChange('contractor', 'username', e.target.value, index)} disabled={contractor.created} placeholder="Enter contractor admin username" prefix={<UserOutlined />} size="large" />
+                      <Input value={contractor.username} onChange={(e) => handleInputChange('contractor', 'username', e.target.value, index)} placeholder="Enter contractor admin username" prefix={<UserOutlined />} size="large" />
                     </Form.Item>
                     <Form.Item label="Company Name" required>
-                      <Input value={contractor.companyName} onChange={(e) => handleInputChange('contractor', 'companyName', e.target.value, index)} disabled={contractor.created} placeholder="Enter company name" prefix={<BankOutlined />} size="large" />
+                      <Input value={contractor.companyName} onChange={(e) => handleInputChange('contractor', 'companyName', e.target.value, index)} placeholder="Enter company name" prefix={<BankOutlined />} size="large" />
                     </Form.Item>
                     <Form.Item label="Registered Official Address" required>
-                      <Input.TextArea value={contractor.registeredAddress} onChange={(e) => handleInputChange('contractor', 'registeredAddress', e.target.value, index)} disabled={contractor.created} rows={3} placeholder="Enter registered official address" />
+                      <Input.TextArea value={contractor.registeredAddress} onChange={(e) => handleInputChange('contractor', 'registeredAddress', e.target.value, index)} rows={3} placeholder="Enter registered official address" />
                     </Form.Item>
                   </div>
                   <Form.Item className="!mb-0 mt-auto">
                     <Button type="primary" onClick={() => createOrResetAdmin('contractor', index)} loading={loadingContractor[index]} icon={contractor.created ? <KeyOutlined /> : <UserAddOutlined />} block size="large">
-                      {contractor.created ? 'Reset Password' : 'Create Admin & Download Credentials'}
+                      {contractor.created ? 'Update Admin Details' : 'Create Admin & Download Credentials'}
                     </Button>
                   </Form.Item>
                 </Card>

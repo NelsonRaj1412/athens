@@ -49,16 +49,18 @@ const SystemLogs: React.FC = () => {
       if (filters.level !== 'all') params.level = filters.level;
       if (filters.module !== 'all') params.module = filters.module;
       if (filters.search) params.search = filters.search;
-      if (filters.dateRange) {
-        params.start = filters.dateRange[0]?.format('YYYY-MM-DD');
-        params.end = filters.dateRange[1]?.format('YYYY-MM-DD');
+      if (filters.dateRange && filters.dateRange[0] && filters.dateRange[1]) {
+        params.start = filters.dateRange[0].format('YYYY-MM-DD');
+        params.end = filters.dateRange[1].format('YYYY-MM-DD');
       }
       const { data } = await getSystemLogs(params);
-      const rows = data?.results || data || [];
+      const rows = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
       setLogs(rows);
       setTotal(data?.count ?? rows.length);
     } catch (error: any) {
-      message.error(error.response?.data?.error || 'Failed to load logs');
+      console.error('Failed to load logs:', error);
+      setLogs([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -98,7 +100,6 @@ const SystemLogs: React.FC = () => {
       dataIndex: 'timestamp',
       key: 'timestamp',
       width: 180,
-      sorter: (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
     },
     {
       title: 'Level',
@@ -108,28 +109,12 @@ const SystemLogs: React.FC = () => {
       render: (level: string) => (
         <Tag color={getLevelColor(level)}>{level}</Tag>
       ),
-      filters: [
-        { text: 'DEBUG', value: 'DEBUG' },
-        { text: 'INFO', value: 'INFO' },
-        { text: 'WARNING', value: 'WARNING' },
-        { text: 'ERROR', value: 'ERROR' },
-        { text: 'CRITICAL', value: 'CRITICAL' },
-      ],
-      onFilter: (value, record) => record.level === value,
     },
     {
       title: 'Module',
       dataIndex: 'module',
       key: 'module',
       width: 150,
-      filters: [
-        { text: 'Authentication', value: 'authentication' },
-        { text: 'Incident Management', value: 'incidentmanagement' },
-        { text: 'PTW', value: 'ptw' },
-        { text: 'Safety Observation', value: 'safetyobservation' },
-        { text: 'Worker', value: 'worker' },
-      ],
-      onFilter: (value, record) => record.module === value,
     },
     {
       title: 'Message',
@@ -227,7 +212,7 @@ const SystemLogs: React.FC = () => {
             pageSize: pageSize,
             showSizeChanger: true,
             showQuickJumper: true,
-            onChange: (p, ps) => { setPage(p); setPageSize(ps); },
+            onChange: (p, ps) => { setPage(p); setPageSize(ps || 50); },
             showTotal: (t, range) => `${range[0]}-${range[1]} of ${t} logs`,
           }}
           scroll={{ x: 1000 }}

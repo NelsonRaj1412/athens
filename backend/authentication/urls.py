@@ -105,6 +105,7 @@ urlpatterns = [
     # Master admin endpoint
     path('master-admin/', views.MasterAdminView.as_view(), name='master_admin'),
     path('admin/pending/<int:user_id>/', views.AdminPendingDetailView.as_view(), name='admin_pending_detail'),
+    path('admin/detail/<int:user_id>/', views.AdminDetailView.as_view(), name='admin_detail'),
     path('admin/detail/update-by-master/<int:user_id>/', views.AdminDetailUpdateByMasterView.as_view(), name='admin_detail_update_by_master'),
     path('admin/detail/approve/<int:user_id>/', views.AdminDetailApproveView.as_view(), name='admin_detail_approve'),
 

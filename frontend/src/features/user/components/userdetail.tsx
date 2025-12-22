@@ -261,6 +261,9 @@ const UserDetail: React.FC<UserDetailProps> = ({ initialMobile }) => {
   }, []);
 
   const onFinish = useCallback(async (values: any) => {
+    console.log('Form submission started with values:', values);
+    console.log('File objects:', fileObjects);
+    
     setSubmitting(true);
     const formPayload = new FormData();
     
@@ -282,8 +285,11 @@ const UserDetail: React.FC<UserDetailProps> = ({ initialMobile }) => {
     if (fileObjects.photo) formPayload.append('photo', fileObjects.photo);
     if (fileObjects.specimenSignature) formPayload.append('specimen_signature', fileObjects.specimenSignature);
     
+    console.log('FormData prepared, making API call...');
+    
     try {
       const response = await api.put('authentication/userdetail/', formPayload, { headers: { 'Content-Type': 'multipart/form-data' } });
+      console.log('API response:', response.data);
       
       if (userToApprove?.id) {
         await api.post(`authentication/userdetail/approve/${userToApprove.id}/`);
@@ -303,10 +309,23 @@ const UserDetail: React.FC<UserDetailProps> = ({ initialMobile }) => {
         setFormSubmitted(true);
       }
     } catch (error: any) {
+      console.error('API error:', error);
+      console.error('Error response:', error.response?.data);
       let errorMessages = 'Failed to update user details. ';
-      if (error.response?.data) {
-        for (const key in error.response.data) {
-          errorMessages += `${key}: ${error.response.data[key].join(', ')} `;
+      if (error.response?.status === 413) {
+        errorMessages = 'File size too large. Please reduce image sizes and try again.';
+      } else if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMessages += error.response.data;
+        } else {
+          for (const key in error.response.data) {
+            const value = error.response.data[key];
+            if (Array.isArray(value)) {
+              errorMessages += `${key}: ${value.join(', ')} `;
+            } else {
+              errorMessages += `${key}: ${value} `;
+            }
+          }
         }
       }
       message.error(errorMessages);
@@ -423,7 +442,7 @@ const UserDetail: React.FC<UserDetailProps> = ({ initialMobile }) => {
                         name="pan"
                         rules={[
                             { required: true, message: 'PAN is required' },
-                            { pattern: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, message: 'Invalid PAN format' }
+                            { pattern: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, message: 'Invalid PAN format (e.g., ABCDE1234F)' }
                         ]}
                         extra="Format: ABCDE1234F (5 letters + 4 digits + 1 letter)"
                     >

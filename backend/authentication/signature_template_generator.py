@@ -18,10 +18,10 @@ class SignatureTemplateGenerator:
     """
     
     def __init__(self):
-        self.template_width = 400
-        self.template_height = 200
-        self.logo_max_width = 80
-        self.logo_max_height = 60
+        self.template_width = 450
+        self.template_height = 180
+        self.logo_max_width = 120
+        self.logo_max_height = 80
         
     def create_signature_template(self, user_detail):
         """
@@ -53,27 +53,32 @@ class SignatureTemplateGenerator:
         if not full_name:
             full_name = user_detail.user.username
         
-        # Add company logo on right side as background watermark
+        # Add company logo as background watermark (50% transparency)
         company_logo = self._get_company_logo(user_detail.user)
         if company_logo:
             try:
                 logo_path = company_logo.path
                 if os.path.exists(logo_path):
                     logo = Image.open(logo_path)
-                    # Resize logo to fit right side
-                    logo_size = min(120, self.template_height - 20)
+                    # Resize logo to fit as background
+                    logo_size = min(self.logo_max_width, self.logo_max_height)
                     logo.thumbnail((logo_size, logo_size), Image.Resampling.LANCZOS)
                     
-                    # Position logo on right side with light opacity
-                    logo_with_alpha = logo.convert('RGBA')
-                    alpha = logo_with_alpha.split()[-1]
-                    alpha = alpha.point(lambda p: int(p * 0.15))  # 15% opacity for subtle background
-                    logo_with_alpha.putalpha(alpha)
+                    # Create logo with 50% transparency
+                    logo_rgba = logo.convert('RGBA')
+                    alpha = logo_rgba.split()[-1]
+                    alpha = alpha.point(lambda p: int(p * 0.5))  # 50% opacity
+                    logo_rgba.putalpha(alpha)
                     
-                    # Position on right side
-                    logo_x = self.template_width - logo.width - 20
+                    # Center logo as background
+                    logo_x = (self.template_width - logo.width) // 2
                     logo_y = (self.template_height - logo.height) // 2
-                    img.paste(logo_with_alpha, (logo_x, logo_y), logo_with_alpha)
+                    
+                    # Create background layer
+                    background = Image.new('RGBA', (self.template_width, self.template_height), (255, 255, 255, 255))
+                    background.paste(logo_rgba, (logo_x, logo_y), logo_rgba)
+                    img = Image.alpha_composite(img.convert('RGBA'), background).convert('RGB')
+                    draw = ImageDraw.Draw(img)
             except Exception as e:
                 pass
         
