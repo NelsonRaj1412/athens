@@ -6,13 +6,15 @@ from . import views_delete_admin
 from . import views_user_by_username
 from . import notification_views
 from . import signature_views
+from . import views_admin_delete
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import CustomTokenObtainPairView
 from .views_attendance import check_in, check_out, get_attendance_status
-from .views import CurrentAdminDetailView, AdminDetailUpdateView
+from .views import CurrentAdminDetailView, AdminDetailUpdateView, AdminDetailUpdateByMasterView
 from .secure_views import SecureCompatibleLoginAPIView
 from .views_dashboard import dashboard_overview
 from .team_member_views import TeamMemberViewSet
+from .epc_logo_test import EPCLogoTestView
 
 # Create router for team member endpoints
 router = DefaultRouter()
@@ -32,6 +34,7 @@ urlpatterns = [
     path('project/list/', views.ProjectListView.as_view(), name='project_list'),
     path('project/update/<int:pk>/', views.ProjectUpdateView.as_view(), name='project_update'),
     path('project/delete/<int:pk>/', views.ProjectDeleteView.as_view(), name='project_delete'),
+    path('project/cleanup/<int:pk>/', views.ProjectCleanupView.as_view(), name='project_cleanup'),
 
     # Master admin project and admin creation
     path('master-admin/projects/create/', views.MasterAdminProjectCreateView.as_view(), name='master_admin_project_create'),
@@ -81,6 +84,9 @@ urlpatterns = [
     path('debug-contractors/', views.DebugContractorListAPIView.as_view(), name='debug_contractors'),
     path('contractoruser-list/', views.ContractorUsersListAPIView.as_view(), name='contractoruser_list'),
     path('users-overview/', views.UsersByTypeOverviewAPIView.as_view(), name='users_overview'),
+    
+    # Master admin delete admin user
+    path('master-admin/delete-admin-user/<int:user_id>/', views_admin_delete.MasterAdminDeleteAdminUserView.as_view(), name='master_admin_delete_admin_user'),
 
     # Notification endpoints
     path('notifications/', notification_views.NotificationListView.as_view(), name='notification_list'),
@@ -101,6 +107,7 @@ urlpatterns = [
 
     # AdminDetail update endpoint
     path('admin/detail/update/<str:usertype>/', AdminDetailUpdateView.as_view(), name='admin_detail_update'),
+    path('admin/update/<int:user_id>/', AdminDetailUpdateByMasterView.as_view(), name='admin_update'),
     
     # Master admin endpoint
     path('master-admin/', views.MasterAdminView.as_view(), name='master_admin'),
@@ -139,4 +146,7 @@ urlpatterns = [
     path('approval/status/', views.UserApprovalStatusView.as_view(), name='user_approval_status'),
     path('admin/detail/approve/<int:admin_detail_id>/', views.AdminDetailApprovalView.as_view(), name='admin_detail_approval'),
     path('admin/pending-details/', views.PendingAdminDetailsView.as_view(), name='pending_admin_details'),
+    
+    # EPC logo test endpoint
+    path('epc-logo-test/', EPCLogoTestView.as_view(), name='epc_logo_test'),
 ]

@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
 from django.db import models
 from .models import InductionTraining, InductionAttendance
@@ -13,6 +14,35 @@ from .serializers import (
 from permissions.decorators import require_permission
 
 User = get_user_model()
+
+@csrf_exempt
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def create_induction_training(request):
+    """Handle both GET and POST for induction training"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Induction training request: {request.method} from user {request.user}")
+    
+    if request.method == 'GET':
+        # Return empty form data or list of trainings
+        queryset = InductionTraining.objects.filter(created_by=request.user)
+        serializer = InductionTrainingListSerializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    elif request.method == 'POST':
+        # Create a new induction training
+        logger.info(f"Creating induction training with data: {request.data}")
+        serializer = InductionTrainingSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            user_project = getattr(request.user, 'project', None)
+            training = serializer.save(created_by=request.user, project=user_project)
+            logger.info(f"Induction training created successfully: {training.id}")
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            logger.error(f"Induction training validation errors: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class InductionTrainingViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -30,6 +60,15 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
         if user_project:
             return InductionTraining.objects.filter(project=user_project)
         return InductionTraining.objects.filter(created_by=user)
+    
+    def create(self, request, *args, **kwargs):
+        """Handle POST requests to create new induction training"""
+        serializer = self.get_serializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            user_project = getattr(request.user, 'project', None)
+            serializer.save(created_by=request.user, project=user_project)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def perform_create(self, serializer):
         user_project = getattr(self.request.user, 'project', None)

@@ -60,9 +60,24 @@ class SignatureTemplateGenerator:
                 logo_path = company_logo.path
                 if os.path.exists(logo_path):
                     logo = Image.open(logo_path)
-                    # Resize logo to fit as background
-                    logo_size = min(self.logo_max_width, self.logo_max_height)
-                    logo.thumbnail((logo_size, logo_size), Image.Resampling.LANCZOS)
+                    
+                    # Calculate scaling to fit within content area while maintaining aspect ratio
+                    content_width = self.template_width - 30  # Leave margins
+                    content_height = self.template_height - 30
+                    
+                    # Calculate scale factors for width and height
+                    scale_w = content_width / logo.width
+                    scale_h = content_height / logo.height
+                    
+                    # Use the smaller scale factor to ensure logo fits within bounds
+                    scale = min(scale_w, scale_h, 1.0)  # Don't upscale
+                    
+                    # Calculate new dimensions
+                    new_width = int(logo.width * scale)
+                    new_height = int(logo.height * scale)
+                    
+                    # Resize logo
+                    logo = logo.resize((new_width, new_height), Image.Resampling.LANCZOS)
                     
                     # Create logo with 50% transparency
                     logo_rgba = logo.convert('RGBA')
@@ -163,9 +178,24 @@ class SignatureTemplateGenerator:
         if company_logo:
             try:
                 logo_img = Image.open(company_logo.path)
-                # Resize logo to fit right side
-                logo_size = min(120, self.template_height - 20)
-                logo_img.thumbnail((logo_size, logo_size), Image.Resampling.LANCZOS)
+                
+                # Calculate scaling to fit within right side area while maintaining aspect ratio
+                available_width = 120  # Right side area width
+                available_height = self.template_height - 40  # Leave top/bottom margins
+                
+                # Calculate scale factors for width and height
+                scale_w = available_width / logo_img.width
+                scale_h = available_height / logo_img.height
+                
+                # Use the smaller scale factor to ensure logo fits within bounds
+                scale = min(scale_w, scale_h, 1.0)  # Don't upscale
+                
+                # Calculate new dimensions
+                new_width = int(logo_img.width * scale)
+                new_height = int(logo_img.height * scale)
+                
+                # Resize logo
+                logo_img = logo_img.resize((new_width, new_height), Image.Resampling.LANCZOS)
                 
                 # Position logo on right side with light opacity
                 logo_with_alpha = logo_img.convert('RGBA')

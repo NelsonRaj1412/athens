@@ -1,0 +1,29 @@
+@layer utilities {
+  @media (min-width: 64rem) {
+    .lg\:col-span-1 {
+      grid-column: span 1/span 1;
+    }
+    .lg\:grid-cols-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .xl\:grid-cols-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
+  }
+  .dashboard-cards-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    max-width: 100%;
+  }
+  @media (max-width: 1279px) {
+    .dashboard-cards-container {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 639px) {
+    .dashboard-cards-container {
+      grid-template-columns: 1fr;
+    }
+  }
+}

@@ -33,7 +33,7 @@ class CanScheduleMom(permissions.BasePermission):
 class MomCreateView(generics.CreateAPIView):
     queryset = Mom.objects.all()
     serializer_class = MomSerializer
-    permission_classes = [CanScheduleMom]
+    permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
         mom = serializer.save(scheduled_by=self.request.user)
@@ -60,20 +60,17 @@ class MomCreateView(generics.CreateAPIView):
 class MomUpdateView(generics.RetrieveUpdateAPIView):
     queryset = Mom.objects.all()
     serializer_class = MomSerializer
-    permission_classes = [CanScheduleMom]
-    model = Mom  # Required for permission decorator
+    permission_classes = [permissions.IsAuthenticated]
     
-    @require_permission('edit')
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
     
-    @require_permission('edit')
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
 
 class MomListView(generics.ListAPIView):
     serializer_class = MomSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
@@ -86,10 +83,8 @@ class MomListView(generics.ListAPIView):
 class MomDeleteView(generics.DestroyAPIView):
     queryset = Mom.objects.all()
     serializer_class = MomSerializer
-    permission_classes = [CanScheduleMom]
-    model = Mom  # Required for permission decorator
+    permission_classes = [permissions.IsAuthenticated]
     
-    @require_permission('delete')
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
 

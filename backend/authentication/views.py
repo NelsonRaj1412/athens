@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.decorators import permission_classes
+from rest_framework.decorators import permission_classes, api_view
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -35,11 +35,8 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
-from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from .serializers import CustomUserSerializer
-from .models import CustomUser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+
 
 class UserDetailRetrieveUpdateView(generics.RetrieveUpdateAPIView):
     serializer_class = UserDetailSerializer
@@ -426,6 +423,30 @@ class ProjectUpdateView(APIView):
 class ProjectDeleteView(APIView):
     permission_classes = (IsAuthenticated,)
 
+    def get(self, request, pk):
+        """
+        Get project dependencies information before deletion
+        """
+        try:
+            project = Project.objects.get(pk=pk)
+        except Project.DoesNotExist:
+            return Response({"error": "Project not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if user has permission to view project deletion info
+        if not (request.user.admin_type == 'master' or request.user.is_superuser):
+            return Response({
+                "error": "Only master admin can view project deletion information."
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        dependencies = self._check_project_dependencies(project)
+        
+        return Response({
+            "project_id": project.id,
+            "project_name": project.projectName,
+            "can_delete": not dependencies['has_dependencies'],
+            "dependencies": dependencies
+        }, status=status.HTTP_200_OK)
+
     def delete(self, request, pk):
         try:
             project = Project.objects.get(pk=pk)
@@ -436,13 +457,313 @@ class ProjectDeleteView(APIView):
             logger.error(f"Error retrieving project {sanitize_log_input(str(pk))} for deletion: {sanitize_log_input(str(e))}")
             return Response({"error": "Internal server error."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+        # Check if user has permission to delete projects (only master admin)
+        if not (request.user.admin_type == 'master' or request.user.is_superuser):
+            return Response({
+                "error": "Only master admin can delete projects."
+            }, status=status.HTTP_403_FORBIDDEN)
+        
         try:
+            # Check for all dependencies before deletion
+            dependencies = self._check_project_dependencies(project)
+            
+            if dependencies['has_dependencies']:
+                return Response({
+                    "error": "Cannot delete project with associated data.",
+                    "details": dependencies['details'],
+                    "total_dependencies": dependencies['total_count'],
+                    "suggestion": "Please remove all associated data before deleting the project. Use GET request to this endpoint to see detailed dependency information."
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # If no dependencies, proceed with deletion
+            project_name = project.projectName
             project.delete()
-            logger.info(f"Project {sanitize_log_input(str(pk))} deleted successfully")
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            logger.info(f"Project {sanitize_log_input(str(pk))} ({sanitize_log_input(project_name)}) deleted successfully by {sanitize_log_input(request.user.username)}")
+            
+            return Response({
+                "message": f"Project '{project_name}' deleted successfully.",
+                "deleted_project_id": pk
+            }, status=status.HTTP_200_OK)
+            
         except Exception as e:
             logger.error(f"Error deleting project {sanitize_log_input(str(pk))}: {sanitize_log_input(str(e))}")
-            return Response({"error": "Failed to delete project."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            import traceback
+            logger.error(f"Full traceback: {sanitize_log_input(traceback.format_exc())}")
+            return Response({
+                "error": "Failed to delete project due to internal server error.",
+                "details": "Please check server logs for more information."
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def _check_project_dependencies(self, project):
+        """
+        Check all possible dependencies for a project before deletion
+        """
+        dependencies = {
+            'has_dependencies': False,
+            'total_count': 0,
+            'details': {}
+        }
+        
+        try:
+            # Check for associated users
+            users_count = CustomUser.objects.filter(project=project).count()
+            if users_count > 0:
+                dependencies['details']['users'] = {
+                    'count': users_count,
+                    'message': f"{users_count} user(s) associated with this project"
+                }
+                dependencies['total_count'] += users_count
+            
+            # Check for PTW permits (if ptw app exists)
+            try:
+                from ptw.models import Permit
+                permits_count = Permit.objects.filter(project=project).count()
+                if permits_count > 0:
+                    dependencies['details']['permits'] = {
+                        'count': permits_count,
+                        'message': f"{permits_count} PTW permit(s) associated with this project"
+                    }
+                    dependencies['total_count'] += permits_count
+            except (ImportError, AttributeError):
+                pass  # PTW app not installed or field doesn't exist
+            except Exception as e:
+                logger.debug(f"Error checking PTW permits: {sanitize_log_input(str(e))}")
+            
+            # Check for workers (if worker app exists)
+            try:
+                from worker.models import Worker
+                workers_count = Worker.objects.filter(project=project).count()
+                if workers_count > 0:
+                    dependencies['details']['workers'] = {
+                        'count': workers_count,
+                        'message': f"{workers_count} worker(s) associated with this project"
+                    }
+                    dependencies['total_count'] += workers_count
+            except (ImportError, AttributeError):
+                pass  # Worker app not installed or field doesn't exist
+            except Exception as e:
+                logger.debug(f"Error checking workers: {sanitize_log_input(str(e))}")
+            
+            # Check for manpower records (if manpower app exists)
+            try:
+                from manpower.models import DailyAttendance
+                manpower_count = DailyAttendance.objects.filter(project=project).count()
+                if manpower_count > 0:
+                    dependencies['details']['manpower'] = {
+                        'count': manpower_count,
+                        'message': f"{manpower_count} manpower record(s) associated with this project"
+                    }
+                    dependencies['total_count'] += manpower_count
+            except (ImportError, AttributeError):
+                pass  # Manpower app not installed or field doesn't exist
+            except Exception as e:
+                logger.debug(f"Error checking manpower: {sanitize_log_input(str(e))}")
+            
+            # Check for incidents (if incidentmanagement app exists)
+            try:
+                from incidentmanagement.models import Incident
+                incidents_count = Incident.objects.filter(project=project).count()
+                if incidents_count > 0:
+                    dependencies['details']['incidents'] = {
+                        'count': incidents_count,
+                        'message': f"{incidents_count} incident(s) associated with this project"
+                    }
+                    dependencies['total_count'] += incidents_count
+            except (ImportError, AttributeError):
+                pass  # Incident management app not installed or field doesn't exist
+            except Exception as e:
+                logger.debug(f"Error checking incidents: {sanitize_log_input(str(e))}")
+            
+            # Check for toolbox talks (if tbt app exists)
+            try:
+                from tbt.models import ToolboxTalk
+                tbt_count = ToolboxTalk.objects.filter(project=project).count()
+                if tbt_count > 0:
+                    dependencies['details']['toolbox_talks'] = {
+                        'count': tbt_count,
+                        'message': f"{tbt_count} toolbox talk(s) associated with this project"
+                    }
+                    dependencies['total_count'] += tbt_count
+            except (ImportError, AttributeError):
+                pass  # TBT app not installed or field doesn't exist
+            except Exception as e:
+                logger.debug(f"Error checking toolbox talks: {sanitize_log_input(str(e))}")
+            
+            # Check for inspections (if inspection app exists)
+            try:
+                from inspection.models import Inspection
+                inspections_count = Inspection.objects.filter(project=project).count()
+                if inspections_count > 0:
+                    dependencies['details']['inspections'] = {
+                        'count': inspections_count,
+                        'message': f"{inspections_count} inspection(s) associated with this project"
+                    }
+                    dependencies['total_count'] += inspections_count
+            except (ImportError, AttributeError):
+                pass  # Inspection app not installed or field doesn't exist
+            except Exception as e:
+                logger.debug(f"Error checking inspections: {sanitize_log_input(str(e))}")
+            
+            # Check for job training records (if jobtraining app exists)
+            try:
+                from jobtraining.models import JobTraining
+                training_count = JobTraining.objects.filter(project=project).count()
+                if training_count > 0:
+                    dependencies['details']['job_training'] = {
+                        'count': training_count,
+                        'message': f"{training_count} job training record(s) associated with this project"
+                    }
+                    dependencies['total_count'] += training_count
+            except (ImportError, AttributeError):
+                pass  # Job training app not installed or field doesn't exist
+            except Exception as e:
+                logger.debug(f"Error checking job training: {sanitize_log_input(str(e))}")
+            
+            # Check for safety observations - handle different field names
+            try:
+                from safetyobservation.models import SafetyObservation
+                # Try different possible field names for project reference
+                safety_obs_count = 0
+                try:
+                    safety_obs_count = SafetyObservation.objects.filter(project=project).count()
+                except Exception:
+                    # If 'project' field doesn't exist, try other common field names
+                    try:
+                        safety_obs_count = SafetyObservation.objects.filter(project_id=project.id).count()
+                    except Exception:
+                        # Skip if no project field exists
+                        pass
+                
+                if safety_obs_count > 0:
+                    dependencies['details']['safety_observations'] = {
+                        'count': safety_obs_count,
+                        'message': f"{safety_obs_count} safety observation(s) associated with this project"
+                    }
+                    dependencies['total_count'] += safety_obs_count
+            except (ImportError, AttributeError):
+                pass  # Safety observation app not installed
+            except Exception as e:
+                logger.debug(f"Error checking safety observations: {sanitize_log_input(str(e))}")
+            
+            # Check for MOM records (if mom app exists)
+            try:
+                from mom.models import MOM
+                mom_count = MOM.objects.filter(project=project).count()
+                if mom_count > 0:
+                    dependencies['details']['mom_records'] = {
+                        'count': mom_count,
+                        'message': f"{mom_count} MOM record(s) associated with this project"
+                    }
+                    dependencies['total_count'] += mom_count
+            except (ImportError, AttributeError):
+                pass  # MOM app not installed or field doesn't exist
+            except Exception as e:
+                logger.debug(f"Error checking MOM records: {sanitize_log_input(str(e))}")
+            
+            # Set has_dependencies flag
+            dependencies['has_dependencies'] = dependencies['total_count'] > 0
+            
+        except Exception as e:
+            logger.error(f"Error checking project dependencies: {sanitize_log_input(str(e))}")
+            # In case of error checking dependencies, assume there are dependencies to be safe
+            dependencies['has_dependencies'] = True
+            dependencies['total_count'] = 1
+            dependencies['details']['error'] = {
+                'count': 1,
+                'message': f"Unable to verify all dependencies: {str(e)}. Deletion blocked for safety."
+            }
+        
+        return dependencies
+        
+class ProjectCleanupView(APIView):
+    """
+    Endpoint to help clean up project dependencies before deletion
+    Only accessible by master admin
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, pk):
+        try:
+            project = Project.objects.get(pk=pk)
+        except Project.DoesNotExist:
+            return Response({"error": "Project not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if user has permission (only master admin)
+        if not (request.user.admin_type == 'master' or request.user.is_superuser):
+            return Response({
+                "error": "Only master admin can perform project cleanup."
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        cleanup_type = request.data.get('cleanup_type', 'check_only')
+        force_cleanup = request.data.get('force_cleanup', False)
+        
+        if cleanup_type == 'check_only':
+            # Just return dependency information
+            dependencies = self._check_project_dependencies(project)
+            return Response({
+                "project_id": project.id,
+                "project_name": project.projectName,
+                "dependencies": dependencies,
+                "cleanup_options": {
+                    "users": "Deactivate or transfer users to another project",
+                    "permits": "Complete or cancel active permits",
+                    "workers": "Transfer workers to another project or mark as inactive",
+                    "records": "Archive or transfer historical records"
+                }
+            }, status=status.HTTP_200_OK)
+        
+        elif cleanup_type == 'deactivate_users' and force_cleanup:
+            # Deactivate all users associated with the project
+            users = CustomUser.objects.filter(project=project)
+            deactivated_count = users.update(is_active=False)
+            
+            logger.info(f"Deactivated {deactivated_count} users for project {project.projectName} by {request.user.username}")
+            
+            return Response({
+                "message": f"Deactivated {deactivated_count} users associated with project '{project.projectName}'",
+                "deactivated_users": deactivated_count
+            }, status=status.HTTP_200_OK)
+        
+        else:
+            return Response({
+                "error": "Invalid cleanup_type or force_cleanup not enabled",
+                "valid_cleanup_types": ["check_only", "deactivate_users"],
+                "note": "Set force_cleanup=true for destructive operations"
+            }, status=status.HTTP_400_BAD_REQUEST)
+    
+    def _check_project_dependencies(self, project):
+        """
+        Check all possible dependencies for a project before deletion
+        """
+        dependencies = {
+            'has_dependencies': False,
+            'total_count': 0,
+            'details': {}
+        }
+        
+        try:
+            # Check for associated users
+            users_count = CustomUser.objects.filter(project=project).count()
+            if users_count > 0:
+                dependencies['details']['users'] = {
+                    'count': users_count,
+                    'message': f"{users_count} user(s) associated with this project"
+                }
+                dependencies['total_count'] += users_count
+            
+            # Set has_dependencies flag
+            dependencies['has_dependencies'] = dependencies['total_count'] > 0
+            
+        except Exception as e:
+            logger.error(f"Error checking project dependencies: {sanitize_log_input(str(e))}")
+            dependencies['has_dependencies'] = True
+            dependencies['total_count'] = 1
+            dependencies['details']['error'] = {
+                'count': 1,
+                'message': f"Unable to verify dependencies: {str(e)}"
+            }
+        
+        return dependencies
 
 # --- USER MANAGEMENT FOR PROJECT ADMINS ---
 
@@ -971,16 +1292,17 @@ class CurrentAdminDetailView(APIView):
             gst_number = ''
             name = getattr(user, 'name', '')
 
-        # For EPC users, check master admin's company logo if no admin logo exists
-        if user.admin_type == 'epc' and not logo_url:
+        # EPC-centric logic: For all EPC users (epc and epcuser), use master admin's company logo
+        if user.admin_type in ['epc', 'epcuser'] and not logo_url:
             try:
                 master_admin = CustomUser.objects.filter(admin_type='master').first()
                 if master_admin:
                     company_detail = CompanyDetail.objects.filter(user=master_admin).first()
                     if company_detail and company_detail.company_logo:
                         logo_url = company_detail.company_logo.url
+                        logger.debug(f"Using master admin logo for EPC user {sanitize_log_input(user.username)}: {logo_url}")
             except Exception as e:
-                logger.debug(f"Error getting master company logo: {sanitize_log_input(str(e))}")
+                logger.debug(f"Error getting master company logo for EPC user: {sanitize_log_input(str(e))}")
         
         # Debug logging for client admin logo
         if user.admin_type == 'client':
@@ -1007,10 +1329,22 @@ class CurrentAdminDetailView(APIView):
         except (ValidationError, ValueError, AttributeError):
             signature_template_url = None
 
+        # EPC-centric logic: For EPC users, also use master admin's company name if available
+        company_name = user.company_name
+        if user.admin_type in ['epc', 'epcuser']:
+            try:
+                master_admin = CustomUser.objects.filter(admin_type='master').first()
+                if master_admin:
+                    company_detail = CompanyDetail.objects.filter(user=master_admin).first()
+                    if company_detail and company_detail.company_name:
+                        company_name = company_detail.company_name
+            except Exception as e:
+                logger.debug(f"Error getting master company name for EPC user: {sanitize_log_input(str(e))}")
+
         response_data = {
             'username': user.username,
             'name': name,
-            'company_name': user.company_name,
+            'company_name': company_name,
             'registered_address': user.registered_address,
             'phone_number': phone_number,
             'pan_number': pan_number,
@@ -1252,7 +1586,13 @@ class AdminDetailView(APIView):
     def get(self, request, user_id):
         try:
             user = CustomUser.objects.get(id=user_id, user_type='projectadmin')
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'Admin user not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error retrieving user {sanitize_log_input(str(user_id))}: {sanitize_log_input(str(e))}")
+            return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
+        try:
             # Try to get AdminDetail
             try:
                 admin_detail = AdminDetail.objects.get(user=user)
@@ -1301,8 +1641,6 @@ class AdminDetailView(APIView):
                 }
                 return Response(response_data, status=status.HTTP_200_OK)
                 
-        except CustomUser.DoesNotExist:
-            return Response({'error': 'Admin user not found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.error(f"Error in AdminDetailView for user {sanitize_log_input(str(user_id))}: {sanitize_log_input(str(e))}")
             return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -1353,45 +1691,31 @@ class AdminPendingDetailView(APIView):
 
 class AdminDetailUpdateByMasterView(APIView):
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def put(self, request, user_id):
         try:
             user = CustomUser.objects.get(id=user_id, user_type='projectadmin')
         except CustomUser.DoesNotExist:
-            logger.warning(f"Admin detail update attempted for non-existent user: {sanitize_log_input(str(user_id))}")
             return Response({'error': 'Admin user not found'}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            logger.error(f"Error retrieving user {sanitize_log_input(str(user_id))}: {sanitize_log_input(str(e))}")
-            return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         try:
             admin_detail, created = AdminDetail.objects.get_or_create(user=user)
             
-            # Update user name if provided
-            name = request.data.get('name')
-            if name:
-                user.name = name
+            # Update user fields
+            if request.data.get('name'):
+                user.name = request.data.get('name')
                 user.save()
             
-            admin_detail_data = {
-                'name': name,  # Include name in admin_detail_data
-                'phone_number': request.data.get('phone_number'),
-                'pan_number': request.data.get('pan_number'),
-                'gst_number': request.data.get('gst_number'),
-            }
+            # Update admin detail
+            serializer = AdminDetailSerializer(admin_detail, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'detail': 'Admin details updated successfully.'}, status=status.HTTP_200_OK)
+            return Response({'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
             
-            serializer = AdminDetailSerializer(admin_detail, data=admin_detail_data, partial=True)
-            if not serializer.is_valid():
-                logger.error(f"Admin detail serializer errors for user {sanitize_log_input(str(user_id))}: {sanitize_log_input(str(serializer.errors))}")
-                return Response({'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-            
-            serializer.save()
-            logger.info(f"Admin details updated by master for user {sanitize_log_input(str(user_id))}")
-            return Response({'detail': 'Admin details updated by master successfully.'}, status=status.HTTP_200_OK)
         except Exception as e:
-            logger.error(f"Error updating admin details for user {sanitize_log_input(str(user_id))}: {sanitize_log_input(str(e))}")
-            return Response({'error': 'Failed to update admin details'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class AdminDetailApproveView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1486,12 +1810,13 @@ class UnifiedCompanyDataView(APIView):
     def _get_company_data_for_user(self, user):
         """
         Get company data based on user type and hierarchy
+        EPC-centric logic: Master Admin's company logo is used for all EPC-related users
         """
         logger.debug(f"Getting company data for user: {sanitize_log_input(user.username)} (type: {sanitize_log_input(user.user_type)}, admin_type: {sanitize_log_input(user.admin_type)})")
+        
         # For master admin: ALWAYS use CompanyDetail (from CompanyDetails component)
         if user.admin_type == 'master':
             try:
-                # Get existing CompanyDetail (don't create if doesn't exist)
                 company_detail = CompanyDetail.objects.filter(user=user).first()
                 
                 if company_detail:
@@ -1516,63 +1841,57 @@ class UnifiedCompanyDataView(APIView):
                 'source': 'company_detail_empty'
             }
 
-        # For project admins: EPC inherits from master, others use AdminDetail
-        if user.user_type == 'projectadmin':
-            # EPC admins inherit from master's CompanyDetail
-            if user.admin_type == 'epc':
-                try:
-                    master_admin = CustomUser.objects.filter(admin_type='master').first()
-                    if master_admin:
-                        company_detail = CompanyDetail.objects.filter(user=master_admin).first()
-                        if company_detail and company_detail.company_logo:
-                            return {
-                                'company_name': company_detail.company_name or user.company_name or '',
-                                'company_logo': self._get_secure_file_url(company_detail.company_logo),
-                                'source': 'master_company_detail'
-                            }
-                except Exception as e:
-                    logger.debug(f"Error accessing master CompanyDetail: {sanitize_log_input(str(e))}")
-            
-            # Client and contractor admins use their own AdminDetail
-            else:
-                try:
-                    from .models import AdminDetail
-                    admin_detail = AdminDetail.objects.filter(user=user).first()
-                    if admin_detail and admin_detail.logo:
+        # EPC-centric logic: All EPC-related users inherit from Master Admin's CompanyDetail
+        if user.admin_type in ['epc', 'epcuser']:
+            try:
+                master_admin = CustomUser.objects.filter(admin_type='master').first()
+                if master_admin:
+                    company_detail = CompanyDetail.objects.filter(user=master_admin).first()
+                    if company_detail:
+                        logo_url = self._get_secure_file_url(company_detail.company_logo) if company_detail.company_logo else None
                         return {
-                            'company_name': user.company_name or '',
-                            'company_logo': self._get_secure_file_url(admin_detail.logo),
-                            'source': 'admin_detail'
+                            'company_name': company_detail.company_name or user.company_name or '',
+                            'company_logo': logo_url,
+                            'source': 'master_company_detail_epc'
                         }
-                except Exception as e:
-                    logger.debug(f"Error accessing admin detail: {sanitize_log_input(str(e))}")
+            except Exception as e:
+                logger.debug(f"Error accessing master CompanyDetail for EPC user: {sanitize_log_input(str(e))}")
 
-            # Fallback
-            return {
-                'company_name': user.company_name or '',
-                'company_logo': None,
-                'source': 'user_fallback'
-            }
+        # For project admins (client and contractor): use their own AdminDetail
+        if user.user_type == 'projectadmin' and user.admin_type in ['client', 'contractor']:
+            try:
+                admin_detail = AdminDetail.objects.filter(user=user).first()
+                if admin_detail and admin_detail.logo:
+                    return {
+                        'company_name': user.company_name or '',
+                        'company_logo': self._get_secure_file_url(admin_detail.logo),
+                        'source': 'admin_detail'
+                    }
+            except Exception as e:
+                logger.debug(f"Error accessing admin detail: {sanitize_log_input(str(e))}")
 
-        # For admin users: inherit from creator, but epcuser inherits from master
+        # For admin users: inherit from creator or use EPC logic
         if user.user_type == 'adminuser' and user.created_by:
-            # EPCuser inherits directly from master's CompanyDetail
+            # Client and contractor users inherit from their creator
+            if user.admin_type in ['clientuser', 'contractoruser']:
+                return self._get_company_data_for_user(user.created_by)
+            
+            # EPC users always inherit from master (handled above)
+            # This is a fallback in case the above EPC logic didn't work
             if user.admin_type == 'epcuser':
                 try:
                     master_admin = CustomUser.objects.filter(admin_type='master').first()
                     if master_admin:
                         company_detail = CompanyDetail.objects.filter(user=master_admin).first()
-                        if company_detail and company_detail.company_logo:
+                        if company_detail:
+                            logo_url = self._get_secure_file_url(company_detail.company_logo) if company_detail.company_logo else None
                             return {
                                 'company_name': company_detail.company_name or user.company_name or '',
-                                'company_logo': self._get_secure_file_url(company_detail.company_logo),
-                                'source': 'master_company_detail_epcuser'
+                                'company_logo': logo_url,
+                                'source': 'master_company_detail_epcuser_fallback'
                             }
                 except Exception as e:
-                    logger.debug(f"Error accessing master CompanyDetail for epcuser: {sanitize_log_input(str(e))}")
-            
-            # Other admin users inherit from their creator
-            return self._get_company_data_for_user(user.created_by)
+                    logger.debug(f"Error in EPC user fallback: {sanitize_log_input(str(e))}")
 
         # Default fallback
         return {

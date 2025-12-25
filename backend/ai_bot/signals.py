@@ -96,13 +96,14 @@ if Permit:
         text = f"Permit {title} Title {getattr(instance,'title','')} Status {getattr(instance,'status','')} Location {getattr(instance,'location','')} Desc {getattr(instance,'description','')}"
         upsert_embedding.delay('permit', instance.id, title, text)
 
-if Worker:
-    @receiver(post_save, sender=Worker)
-    def upsert_worker(sender, instance, created, **kwargs):
-        from .tasks import upsert_embedding
-        title = getattr(instance,'name','')
-        text = f"Worker {title} Dept {getattr(instance,'department','')} Designation {getattr(instance,'designation','')} Status {getattr(instance,'status','')}"
-        upsert_embedding.delay('worker', instance.id, title, text)
+# Temporarily disabled due to Celery connection issues
+# if Worker:
+#     @receiver(post_save, sender=Worker)
+#     def upsert_worker(sender, instance, created, **kwargs):
+#         from .tasks import upsert_embedding
+#         title = getattr(instance,'name','')
+#         text = f"Worker {title} Dept {getattr(instance,'department','')} Designation {getattr(instance,'designation','')} Status {getattr(instance,'status','')}"
+#         upsert_embedding.delay('worker', instance.id, title, text)
 
 if ManpowerEntry:
     @receiver(post_save, sender=ManpowerEntry)
@@ -115,10 +116,16 @@ if ManpowerEntry:
 if Mom:
     @receiver(post_save, sender=Mom)
     def upsert_mom(sender, instance, created, **kwargs):
-        from .tasks import upsert_embedding
-        title = getattr(instance,'title','')
-        text = f"Meeting {title} Status {getattr(instance,'status','')} Dept {getattr(instance,'department','')} Location {getattr(instance,'location','')} Agenda {getattr(instance,'agenda','')}"
-        upsert_embedding.delay('mom', instance.id, title, text)
+        try:
+            from .tasks import upsert_embedding
+            title = getattr(instance,'title','')
+            text = f"Meeting {title} Status {getattr(instance,'status','')} Dept {getattr(instance,'department','')} Location {getattr(instance,'location','')} Agenda {getattr(instance,'agenda','')}"
+            upsert_embedding.delay('mom', instance.id, title, text)
+        except Exception as e:
+            # Log error but don't break the save operation
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to queue embedding task for Mom {instance.id}: {e}")
 
 # Temporarily disabled for demo data creation
 # if Project:
@@ -132,26 +139,44 @@ if Mom:
 if InductionTraining:
     @receiver(post_save, sender=InductionTraining)
     def upsert_induction_training(sender, instance, created, **kwargs):
-        from .tasks import upsert_embedding
-        title = getattr(instance,'title','')
-        text = f"InductionTraining {title} Date {getattr(instance,'date','')} Location {getattr(instance,'location','')} Conductor {getattr(instance,'conducted_by','')} Status {getattr(instance,'status','')} Desc {getattr(instance,'description','')}"
-        upsert_embedding.delay('inductiontraining', instance.id, title, text)
+        try:
+            from .tasks import upsert_embedding
+            title = getattr(instance,'title','')
+            text = f"InductionTraining {title} Date {getattr(instance,'date','')} Location {getattr(instance,'location','')} Conductor {getattr(instance,'conducted_by','')} Status {getattr(instance,'status','')} Desc {getattr(instance,'description','')}"
+            upsert_embedding.delay('inductiontraining', instance.id, title, text)
+        except Exception as e:
+            # Log error but don't break the save operation
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to queue embedding task for InductionTraining {instance.id}: {e}")
 
 if JobTraining:
     @receiver(post_save, sender=JobTraining)
     def upsert_job_training(sender, instance, created, **kwargs):
-        from .tasks import upsert_embedding
-        title = getattr(instance,'title','')
-        text = f"JobTraining {title} Date {getattr(instance,'date','')} Location {getattr(instance,'location','')} Conductor {getattr(instance,'conducted_by','')} Status {getattr(instance,'status','')} Desc {getattr(instance,'description','')}"
-        upsert_embedding.delay('jobtraining', instance.id, title, text)
+        try:
+            from .tasks import upsert_embedding
+            title = getattr(instance,'title','')
+            text = f"JobTraining {title} Date {getattr(instance,'date','')} Location {getattr(instance,'location','')} Conductor {getattr(instance,'conducted_by','')} Status {getattr(instance,'status','')} Desc {getattr(instance,'description','')}"
+            upsert_embedding.delay('jobtraining', instance.id, title, text)
+        except Exception as e:
+            # Log error but don't break the save operation
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to queue embedding task for JobTraining {instance.id}: {e}")
 
 if ToolboxTalk:
     @receiver(post_save, sender=ToolboxTalk)
     def upsert_toolbox_talk(sender, instance, created, **kwargs):
-        from .tasks import upsert_embedding
-        title = getattr(instance,'title','')
-        text = f"ToolboxTalk {title} Date {getattr(instance,'date','')} Location {getattr(instance,'location','')} Conductor {getattr(instance,'conducted_by','')} Status {getattr(instance,'status','')} Desc {getattr(instance,'description','')}"
-        upsert_embedding.delay('toolboxtalk', instance.id, title, text)
+        try:
+            from .tasks import upsert_embedding
+            title = getattr(instance,'title','')
+            text = f"ToolboxTalk {title} Date {getattr(instance,'date','')} Location {getattr(instance,'location','')} Conductor {getattr(instance,'conducted_by','')} Status {getattr(instance,'status','')} Desc {getattr(instance,'description','')}"
+            upsert_embedding.delay('toolboxtalk', instance.id, title, text)
+        except Exception as e:
+            # Log error but don't break the save operation
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to queue embedding task for ToolboxTalk {instance.id}: {e}")
 
 if PermitType:
     @receiver(post_save, sender=PermitType)
@@ -188,11 +213,12 @@ if Permit:
         from .tasks import delete_embedding
         delete_embedding.delay('permit', instance.id)
 
-if Worker:
-    @receiver(post_delete, sender=Worker)
-    def delete_worker_embedding(sender, instance, **kwargs):
-        from .tasks import delete_embedding
-        delete_embedding.delay('worker', instance.id)
+# Temporarily disabled due to Celery connection issues
+# if Worker:
+#     @receiver(post_delete, sender=Worker)
+#     def delete_worker_embedding(sender, instance, **kwargs):
+#         from .tasks import delete_embedding
+#         delete_embedding.delay('worker', instance.id)
 
 if ManpowerEntry:
     @receiver(post_delete, sender=ManpowerEntry)
@@ -203,32 +229,60 @@ if ManpowerEntry:
 if Mom:
     @receiver(post_delete, sender=Mom)
     def delete_mom_embedding(sender, instance, **kwargs):
-        from .tasks import delete_embedding
-        delete_embedding.delay('mom', instance.id)
+        try:
+            from .tasks import delete_embedding
+            delete_embedding.delay('mom', instance.id)
+        except Exception as e:
+            # Log error but don't break the delete operation
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to queue delete embedding task for Mom {instance.id}: {e}")
 
 if Project:
     @receiver(post_delete, sender=Project)
     def delete_project_embedding(sender, instance, **kwargs):
-        from .tasks import delete_embedding
-        delete_embedding.delay('project', instance.id)
+        from .tasks import delete_embedding, delete_embedding_sync
+        try:
+            delete_embedding.delay('project', instance.id)
+        except Exception:
+            # Fallback to synchronous deletion if Celery is not available
+            delete_embedding_sync('project', instance.id)
 
 if InductionTraining:
     @receiver(post_delete, sender=InductionTraining)
     def delete_induction_training_embedding(sender, instance, **kwargs):
-        from .tasks import delete_embedding
-        delete_embedding.delay('inductiontraining', instance.id)
+        try:
+            from .tasks import delete_embedding
+            delete_embedding.delay('inductiontraining', instance.id)
+        except Exception as e:
+            # Log error but don't break the delete operation
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to queue delete embedding task for InductionTraining {instance.id}: {e}")
 
 if JobTraining:
     @receiver(post_delete, sender=JobTraining)
     def delete_job_training_embedding(sender, instance, **kwargs):
-        from .tasks import delete_embedding
-        delete_embedding.delay('jobtraining', instance.id)
+        try:
+            from .tasks import delete_embedding
+            delete_embedding.delay('jobtraining', instance.id)
+        except Exception as e:
+            # Log error but don't break the delete operation
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to queue delete embedding task for JobTraining {instance.id}: {e}")
 
 if ToolboxTalk:
     @receiver(post_delete, sender=ToolboxTalk)
     def delete_toolbox_talk_embedding(sender, instance, **kwargs):
-        from .tasks import delete_embedding
-        delete_embedding.delay('toolboxtalk', instance.id)
+        try:
+            from .tasks import delete_embedding
+            delete_embedding.delay('toolboxtalk', instance.id)
+        except Exception as e:
+            # Log error but don't break the delete operation
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to queue delete embedding task for ToolboxTalk {instance.id}: {e}")
 
 if PermitType:
     @receiver(post_delete, sender=PermitType)

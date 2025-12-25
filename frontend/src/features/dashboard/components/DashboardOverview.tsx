@@ -1,6 +1,7 @@
 // src/features/dashboard/components/DashboardOverview.tsx
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Typography, Select, List, Progress, Space, Divider, Tag, Button, Avatar, Spin, Alert, Row, Col, Statistic } from 'antd';
 import {
   FileTextOutlined,
@@ -396,6 +397,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 // --- MAIN COMPONENT ---
 const DashboardOverview: React.FC = () => {
   const { effectiveTheme } = useTheme();
+  const navigate = useNavigate();
   const [timeRange, setTimeRange] = useState('week');
   const [dashboardData, setDashboardData] = useState<DashboardData>(MOCK_DASHBOARD_DATA);
   const [loading, setLoading] = useState(false);
@@ -474,10 +476,35 @@ const DashboardOverview: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button type="primary" size="small" className="bg-orange-500 border-orange-500">
-                View Details
+              <Button 
+                type="primary" 
+                size="small" 
+                className="bg-orange-500 border-orange-500"
+                onClick={() => {
+                  // Navigate to alerts page
+                  try {
+                    navigate('/dashboard/alerts');
+                  } catch (error) {
+                    console.error('Navigation error:', error);
+                  }
+                }}
+              >
+                View All Alerts
               </Button>
-              <Button type="text" size="small" icon={<MoreOutlined />} />
+              <Button 
+                type="text" 
+                size="small" 
+                icon={<MoreOutlined />}
+                onClick={() => {
+                  // Show alert details modal
+                  try {
+                    // Could open a modal or navigate to specific alert
+                    navigate('/dashboard/notifications');
+                  } catch (error) {
+                    console.error('Navigation error:', error);
+                  }
+                }}
+              />
             </div>
           </div>
         </Card>
@@ -507,7 +534,7 @@ const DashboardOverview: React.FC = () => {
         {/* Left Column (3/4 width) */}
         <div className="lg:col-span-3 space-y-6">
           {/* Top Stat Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+          <div className="dashboard-cards-container">
               <Card className="hover:shadow-lg transition-shadow">
                   <div className="flex items-center justify-between">
                     <div>
@@ -752,16 +779,65 @@ const DashboardOverview: React.FC = () => {
             <Card>
                 <Title level={5} className="!mb-4 !text-color-text-base">Quick Actions</Title>
                 <div className="space-y-3">
-                    <Button type="primary" block icon={<PlusOutlined />}>
+                    <Button 
+                        type="primary" 
+                        block 
+                        icon={<PlusOutlined />}
+                        onClick={() => {
+                          // Navigate to PTW
+                          try {
+                            navigate('/dashboard/ptw');
+                          } catch (error) {
+                            console.error('Navigation error:', error);
+                            window.location.href = '/dashboard/ptw';
+                          }
+                        }}
+                    >
                         New Permit
                     </Button>
-                    <Button block icon={<SafetyOutlined />}>
+                    <Button 
+                        block 
+                        icon={<SafetyOutlined />}
+                        onClick={() => {
+                          // Navigate to safety observation
+                          try {
+                            navigate('/dashboard/safetyobservation');
+                          } catch (error) {
+                            console.error('Navigation error:', error);
+                            window.location.href = '/dashboard/safetyobservation';
+                          }
+                        }}
+                    >
                         Safety Report
                     </Button>
-                    <Button block icon={<AlertOutlined />}>
+                    <Button 
+                        block 
+                        icon={<AlertOutlined />}
+                        onClick={() => {
+                          // Navigate to incident management
+                          try {
+                            navigate('/dashboard/incidentmanagement');
+                          } catch (error) {
+                            console.error('Navigation error:', error);
+                            window.location.href = '/dashboard/incidentmanagement';
+                          }
+                        }}
+                    >
                         Incident Report
                     </Button>
-                    <Button block icon={<BarChartOutlined />}>
+                    <Button 
+                        block 
+                        icon={<BarChartOutlined />}
+                        onClick={() => {
+                          // Navigate to analytics
+                          try {
+                            navigate('/dashboard');
+                          } catch (error) {
+                            console.error('Navigation error:', error);
+                            window.location.href = '/dashboard';
+                          }
+                        }}
+                    >
                         View Analytics
                     </Button>
                 </div>

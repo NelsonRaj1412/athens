@@ -18,6 +18,24 @@ def upsert_embedding(module: str, record_id: int, title: str, text: str):
         for ch, emb in zip(chunks, vecs):
             DocEmbedding.objects.create(module=module, record_id=record_id, title=title, chunk=ch, embedding=emb)
 
+@shared_task
+def delete_embedding(module: str, record_id: int):
+    """Delete embeddings for a specific module and record"""
+    try:
+        with transaction.atomic():
+            DocEmbedding.objects.filter(module=module, record_id=record_id).delete()
+    except Exception:
+        # If there's any issue with embedding deletion, don't block the main operation
+        pass
+
+def delete_embedding_sync(module: str, record_id: int):
+    """Synchronous version of delete_embedding for when Celery is not available"""
+    try:
+        with transaction.atomic():
+            DocEmbedding.objects.filter(module=module, record_id=record_id).delete()
+    except Exception:
+        # If there's any issue with embedding deletion, don't block the main operation
+        pass
 
 def _chunk_text(text: str, max_tokens: int = 256):
     words = text.split()

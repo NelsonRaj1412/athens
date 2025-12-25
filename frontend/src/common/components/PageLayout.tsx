@@ -76,12 +76,20 @@ const PageLayout: React.FC<PageLayoutProps> = ({
               fontSize: 'clamp(0.75rem, 2vw, 0.875rem)'
             }}
           >
-            <Breadcrumb.Item href="/dashboard">
-              <HomeOutlined />
+            <Breadcrumb.Item>
+              <a href="/dashboard" style={{ color: 'inherit', textDecoration: 'none' }}>
+                <HomeOutlined />
+              </a>
             </Breadcrumb.Item>
             {breadcrumbs.map((crumb, index) => (
-              <Breadcrumb.Item key={index} href={crumb.href}>
-                {crumb.title}
+              <Breadcrumb.Item key={index}>
+                {crumb.href ? (
+                  <a href={crumb.href} style={{ color: 'inherit', textDecoration: 'none' }}>
+                    {crumb.title}
+                  </a>
+                ) : (
+                  crumb.title
+                )}
               </Breadcrumb.Item>
             ))}
           </Breadcrumb>

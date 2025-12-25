@@ -260,9 +260,9 @@ const App: React.FC = () => {
               <Route path="ptw/*" element={<RoleBasedRoute allowedRoles={['client', 'epc', 'contractor', 'clientuser', 'epcuser', 'contractoruser', 'master', 'adminuser']}><PTWRoutes /></RoleBasedRoute>} />
               
               {/* Inspection Routes */}
-              <Route path="inspection" element={<RoleBasedRoute allowedRoles={['clientuser', 'epcuser', 'contractoruser', 'adminuser']}><InspectionList /></RoleBasedRoute>} />
-              <Route path="inspection/create" element={<RoleBasedRoute allowedRoles={['clientuser', 'epcuser', 'contractoruser', 'adminuser']}><InspectionCreate /></RoleBasedRoute>} />
               <Route path="inspection/reports" element={<RoleBasedRoute allowedRoles={['clientuser', 'epcuser', 'contractoruser', 'adminuser']}><InspectionReports /></RoleBasedRoute>} />
+              <Route path="inspection/create" element={<RoleBasedRoute allowedRoles={['clientuser', 'epcuser', 'contractoruser', 'adminuser']}><InspectionCreate /></RoleBasedRoute>} />
+              <Route path="inspection" element={<RoleBasedRoute allowedRoles={['clientuser', 'epcuser', 'contractoruser', 'adminuser']}><InspectionList /></RoleBasedRoute>} />
               <Route path="inspection/forms/ac-cable-testing" element={<RoleBasedRoute allowedRoles={['clientuser', 'epcuser', 'contractoruser', 'adminuser']}><ACCableFormList /></RoleBasedRoute>} />
               <Route path="inspection/forms/ac-cable-testing/list" element={<RoleBasedRoute allowedRoles={['clientuser', 'epcuser', 'contractoruser', 'adminuser']}><ACCableFormList /></RoleBasedRoute>} />
               <Route path="inspection/forms/ac-cable-testing/create" element={<RoleBasedRoute allowedRoles={['epcuser']}><ACCableInspectionForm /></RoleBasedRoute>} />

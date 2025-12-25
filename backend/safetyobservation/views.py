@@ -42,7 +42,27 @@ class SafetyObservationViewSet(viewsets.ModelViewSet):
     
     @require_permission('delete')
     def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
+        try:
+            instance = self.get_object()
+            # Check if user has permission to delete
+            if instance.created_by != request.user and not request.user.is_staff:
+                return Response(
+                    {'error': 'You do not have permission to delete this observation'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            observation_id = instance.observationID
+            instance.delete()
+            return Response(
+                {'message': f'Safety observation {observation_id} deleted successfully'},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            logger.error(f"Error deleting safety observation: {e}")
+            return Response(
+                {'error': 'Failed to delete safety observation'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     def perform_update(self, serializer):
         old_instance = SafetyObservation.objects.get(pk=serializer.instance.pk)

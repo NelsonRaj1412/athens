@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
@@ -15,6 +15,17 @@ from worker.models import Worker
 from permissions.decorators import require_permission
 
 User = get_user_model()
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_job_training(request):
+    """Create a new job training"""
+    serializer = JobTrainingSerializer(data=request.data)
+    if serializer.is_valid():
+        user_project = getattr(request.user, 'project', None)
+        serializer.save(created_by=request.user, project=user_project)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class JobTrainingViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -144,12 +155,20 @@ class JobTrainingViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['get', 'post'])
     def attendance(self, request, pk=None):
         """
-        Submit attendance for a job training
+        Get or submit attendance for a job training
         """
         job_training = self.get_object()
+        
+        if request.method == 'GET':
+            # Return existing attendance records
+            attendances = job_training.attendances.all()
+            serializer = JobTrainingAttendanceSerializer(attendances, many=True)
+            return Response(serializer.data)
+        
+        # POST method - submit attendance
         attendance_records = request.data.get('attendance_records', [])
         evidence_photo = request.data.get('evidence_photo')
         
@@ -203,14 +222,11 @@ class JobTrainingViewSet(viewsets.ModelViewSet):
             'workers_present': len(present_worker_ids)
         }, status=status.HTTP_201_CREATED)
 
-    @require_permission('edit')
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
     
-    @require_permission('edit')
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
     
-    @require_permission('delete')
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)

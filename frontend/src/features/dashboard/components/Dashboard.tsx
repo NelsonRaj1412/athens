@@ -133,7 +133,19 @@ const Dashboard: React.FC = () => {
         else if (e.key === 'logout') handleLogout();
     };
 
-    const handleMenuClick = (e: any) => navigate(e.key);
+    const handleMenuClick = (e: any) => {
+        console.log('Menu clicked:', e.key, e.keyPath);
+        
+        // Special handling for inspection reports
+        if (e.key === '/dashboard/inspection/reports') {
+            console.log('Navigating to inspection reports');
+            navigate('/dashboard/inspection/reports');
+            return;
+        }
+        
+        // Default navigation
+        navigate(e.key);
+    };
 
     const getMenuItems = () => {
         return getMenuItemsForUser(
@@ -598,7 +610,23 @@ const Dashboard: React.FC = () => {
                                      type="primary"
                                      size="small"
                                      style={{ fontSize: '12px', height: '24px', padding: '0 8px' }}
-                                     onClick={() => navigate(django_user_type === 'projectadmin' ? '/dashboard/admindetail' : '/dashboard/userdetail')}
+                                     onClick={() => {
+                                         console.log('Complete Profile clicked:', {
+                                             django_user_type,
+                                             usertype,
+                                             hasSubmittedDetails,
+                                             isApproved
+                                         });
+                                         
+                                         if (django_user_type === 'projectadmin') {
+                                             navigate('/dashboard/admindetail');
+                                         } else if (django_user_type === 'adminuser') {
+                                             navigate('/dashboard/userdetail');
+                                         } else {
+                                             // Fallback for other user types
+                                             navigate('/dashboard/profile');
+                                         }
+                                     }}
                                  >
                                      Complete Profile
                                  </Button>
@@ -643,28 +671,11 @@ const Dashboard: React.FC = () => {
                                   const notif = notificationModal.notification;
                                   if (!notif) return;
 
-                                  console.log('Notification click:', {
-                                    id: notif.id,
-                                    type: notif.type,
-                                    formType: notif.data?.formType,
-                                    userId: notif.data?.userId,
-                                    link: notif.link,
-                                    data: notif.data
-                                  });
+                                  // Process notification click
 
-                                  console.log('Auth state check:', {
-                                    token: !!useAuthStore.getState().token,
-                                    usertype: useAuthStore.getState().usertype,
-                                    userId: useAuthStore.getState().userId,
-                                    isAuthenticated: useAuthStore.getState().isAuthenticated()
-                                  });
+                                  // Check auth state
 
-                                  console.log('Auth state before navigation:', {
-                                    token: !!useAuthStore.getState().token,
-                                    usertype: useAuthStore.getState().usertype,
-                                    userId: useAuthStore.getState().userId,
-                                    isAuthenticated: useAuthStore.getState().isAuthenticated()
-                                  });
+                                  // Prepare auth state for navigation
 
                                   setNotificationModal({visible: false});
                                   if (notif.data?.formType === 'userdetail' && django_user_type === 'projectadmin') {

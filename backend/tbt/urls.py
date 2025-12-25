@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ToolboxTalkViewSet, user_search, user_list, submit_attendance, deployed_workers
+from .views import ToolboxTalkViewSet, user_search, user_list, submit_attendance, deployed_workers, create_toolbox_talk
 
 # Create a router and register our viewset with it
 router = DefaultRouter()
@@ -20,7 +20,7 @@ urlpatterns = [
     
     # Toolbox talk endpoints
     path('list/', ToolboxTalkViewSet.as_view({'get': 'list'}), name='toolboxtalk-list'),
-    path('create/', ToolboxTalkViewSet.as_view({'post': 'create'}), name='toolboxtalk-create'),
+    path('create/', create_toolbox_talk, name='toolboxtalk-create'),
     path('update/<int:pk>/', ToolboxTalkViewSet.as_view({'put': 'update', 'patch': 'partial_update'}), name='toolboxtalk-update'),
     path('delete/<int:pk>/', ToolboxTalkViewSet.as_view({'delete': 'destroy'}), name='toolboxtalk-delete'),
     path('<int:pk>/', ToolboxTalkViewSet.as_view({'get': 'retrieve'}), name='toolboxtalk-detail'),

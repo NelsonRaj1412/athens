@@ -18,6 +18,17 @@ from django.core.files.base import ContentFile
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_toolbox_talk(request):
+    """Create a new toolbox talk"""
+    serializer = ToolboxTalkSerializer(data=request.data, context={'request': request})
+    if serializer.is_valid():
+        user_project = getattr(request.user, 'project', None)
+        serializer.save(created_by=request.user, project=user_project)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class ToolboxTalkViewSet(viewsets.ModelViewSet):
     """
     API endpoint for Toolbox Talks

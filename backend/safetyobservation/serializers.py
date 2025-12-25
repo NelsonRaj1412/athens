@@ -32,7 +32,7 @@ class SafetyObservationSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at', 'created_by',
             'files', 'beforePictures'
         ]
-        read_only_fields = ['id', 'riskScore', 'created_at', 'updated_at', 'created_by', 'files']
+        read_only_fields = ['id', 'observationID', 'riskScore', 'created_at', 'updated_at', 'created_by', 'files']
 
     def create(self, validated_data):
         # Extract file data
@@ -59,6 +59,24 @@ class SafetyObservationSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         # Extract file data
         before_pictures = validated_data.pop('beforePictures', [])
+        
+        # Remove observationID from validated_data as it should not be updated
+        validated_data.pop('observationID', None)
+
+        # Handle classification field properly
+        if 'classification' in validated_data:
+            classification = validated_data['classification']
+            if isinstance(classification, str):
+                try:
+                    # Try to parse JSON string
+                    import json
+                    validated_data['classification'] = json.loads(classification)
+                except (json.JSONDecodeError, TypeError):
+                    # If not valid JSON, treat as single item
+                    validated_data['classification'] = [classification] if classification else []
+            elif not isinstance(classification, list):
+                # Ensure it's a list
+                validated_data['classification'] = [classification] if classification else []
 
         # Update only the provided fields (partial update support)
         for attr, value in validated_data.items():

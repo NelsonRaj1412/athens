@@ -206,8 +206,15 @@ const SafetyObservationForm: React.FC<SafetyObservationFormProps> = ({
 
       // Basic Information (REQUIRED)
       formData.append('observationID', currentObservationID);
-      formData.append('date', values.date.format('YYYY-MM-DD'));
-      formData.append('time', values.time.format('HH:mm:ss'));
+      
+      // Handle date and time properly
+      if (values.date) {
+        formData.append('date', values.date.format('YYYY-MM-DD'));
+      }
+      if (values.time) {
+        formData.append('time', values.time.format('HH:mm:ss'));
+      }
+      
       formData.append('reportedBy', username || '');
       formData.append('department', values.department || '');
       formData.append('workLocation', values.workLocation || '');
@@ -218,7 +225,15 @@ const SafetyObservationForm: React.FC<SafetyObservationFormProps> = ({
 
       // Observation Details (REQUIRED)
       formData.append('typeOfObservation', values.typeOfObservation);
-      formData.append('classification', JSON.stringify([values.classification])); // JSONField requires valid JSON array
+      
+      // Handle classification properly - backend expects JSON array
+      if (values.classification) {
+        const classification = Array.isArray(values.classification) ? values.classification : [values.classification];
+        formData.append('classification', JSON.stringify(classification));
+      } else {
+        formData.append('classification', JSON.stringify([]));
+      }
+      
       formData.append('safetyObservationFound', values.safetyObservationFound || '');
 
       // Risk Assessment (REQUIRED)
@@ -275,11 +290,37 @@ const SafetyObservationForm: React.FC<SafetyObservationFormProps> = ({
       if (onSuccess) onSuccess();
 
     } catch (error: any) {
+      console.error('Safety Observation Update Error:', error);
+      console.error('Error Response:', error.response);
       
-      const errorMessage = error.response?.data?.detail || 
-                          JSON.stringify(error.response?.data) || 
-                          error.message || 
-                          'Failed to create safety observation';
+      let errorMessage = isEditMode ? 'Failed to update safety observation' : 'Failed to create safety observation';
+      
+      if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        } else if (error.response.data.detail) {
+          errorMessage = error.response.data.detail;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else {
+          // Handle field-specific validation errors
+          const fieldErrors = [];
+          for (const [field, errors] of Object.entries(error.response.data)) {
+            if (Array.isArray(errors)) {
+              fieldErrors.push(`${field}: ${errors.join(', ')}`);
+            } else {
+              fieldErrors.push(`${field}: ${errors}`);
+            }
+          }
+          if (fieldErrors.length > 0) {
+            errorMessage = fieldErrors.join('; ');
+          } else {
+            errorMessage = JSON.stringify(error.response.data);
+          }
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
       
       message.error(`Error: ${errorMessage}`);
     } finally {

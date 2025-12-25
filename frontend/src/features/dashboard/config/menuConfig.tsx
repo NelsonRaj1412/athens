@@ -479,6 +479,16 @@ export const getMenuItemsForUser = (
     // Add comprehensive modules
     baseMenuItems.push(
       {
+        key: 'training',
+        icon: <AuditOutlined />,
+        label: 'Training',
+        children: [
+          { key: '/dashboard/inductiontraining', icon: <ReadOutlined />, label: 'Induction Training' },
+          { key: '/dashboard/jobtraining', icon: <ReadOutlined />, label: 'Job Training' },
+          { key: '/dashboard/toolboxtalk', icon: <BookOutlined />, label: 'Toolbox Talk' },
+        ]
+      },
+      {
         key: 'incidentmanagement',
         icon: <SafetyOutlined />,
         label: 'Incident Management',

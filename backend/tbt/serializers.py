@@ -50,7 +50,7 @@ class ToolboxTalkSerializer(serializers.ModelSerializer):
             'created_by_details', 'created_at', 'updated_at', 
             'attendance_records', 'evidence_photo'
         ]
-        read_only_fields = ['created_at', 'updated_at', 'created_by_details']
+        read_only_fields = ['created_at', 'updated_at', 'created_by_details', 'created_by']
     
     def create(self, validated_data):
         # Set the created_by field to the current user

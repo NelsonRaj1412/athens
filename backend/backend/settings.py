@@ -422,18 +422,16 @@ GOOGLE_TRANSLATE_API_KEY = os.getenv('GOOGLE_TRANSLATE_API_KEY')
 # CELERY CONFIGURATION
 # ============================================================================
 
-# Celery Configuration Options - DISABLED FOR DEVELOPMENT
-# CELERY_TIMEZONE = TIME_ZONE
-# CELERY_TASK_TRACK_STARTED = True
-# CELERY_TASK_TIME_LIMIT = 30 * 60
-# CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60
-# CELERY_WORKER_PREFETCH_MULTIPLIER = 1
-# CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000
-
-# Celery Broker settings - DISABLED
-# CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
-# CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
-CELERY_TASK_ALWAYS_EAGER = True  # Execute tasks synchronously
+# Celery Configuration Options
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000
+CELERY_TASK_ALWAYS_EAGER = False  # Enable async task execution
 
 # Celery serialization
 CELERY_ACCEPT_CONTENT = ['json']

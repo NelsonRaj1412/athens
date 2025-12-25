@@ -496,6 +496,24 @@ const AdminApproval: React.FC = () => {
     }
   };
 
+  const handleDeleteExistingAdmin = async (admin: AdminDetail) => {
+    const confirmDelete = window.confirm(`Are you sure you want to permanently delete ${admin.user.username}?`);
+    if (!confirmDelete) return;
+
+    try {
+      await api.delete(`/authentication/master-admin/delete-admin-user/${admin.user.id}/`);
+      message.success(`Admin user ${admin.user.username} deleted successfully`);
+      
+      // Refresh the admin details list
+      if (selectedProjectId) {
+        await fetchAdminDetails(selectedProjectId);
+        await fetchAdminsForProject(selectedProjectId);
+      }
+    } catch (error: any) {
+      message.error(`Failed to delete admin user: ${error.response?.data?.error || error.message}`);
+    }
+  };
+
   const handleAddContractor = () => {
     setContractorAdmins([...contractorAdmins, { username: '', companyName: '', registeredAddress: '', created: false }]);
     setLoadingContractor([...loadingContractor, false]);
@@ -564,6 +582,13 @@ const AdminApproval: React.FC = () => {
               style={{ color: '#52c41a' }}
             />
           )}
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteExistingAdmin(record)}
+            title="Delete Admin User"
+          />
         </Space>
       ),
     },

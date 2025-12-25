@@ -196,9 +196,36 @@ const LoginPage: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-center space-x-4 mb-6">
-              <Button size="large" icon={<FaApple className="text-xl" />} className="!w-16 !h-12 !flex !items-center !justify-center" />
-              <Button size="large" icon={<FaGoogle className="text-xl" />} className="!w-16 !h-12 !flex !items-center !justify-center" />
-              <Button size="large" icon={<FaXTwitter className="text-xl" />} className="!w-16 !h-12 !flex !items-center !justify-center" />
+              <Button 
+                size="large" 
+                icon={<FaApple className="text-xl" />} 
+                className="!w-16 !h-12 !flex !items-center !justify-center" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  // Apple login placeholder
+                  message.info('Apple login coming soon!');
+                }}
+              />
+              <Button 
+                size="large" 
+                icon={<FaGoogle className="text-xl" />} 
+                className="!w-16 !h-12 !flex !items-center !justify-center" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  // Google login placeholder
+                  message.info('Google login coming soon!');
+                }}
+              />
+              <Button 
+                size="large" 
+                icon={<FaXTwitter className="text-xl" />} 
+                className="!w-16 !h-12 !flex !items-center !justify-center" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  // Twitter login placeholder
+                  message.info('Twitter login coming soon!');
+                }}
+              />
             </div>
 
             <div className="my-6 flex items-center">
