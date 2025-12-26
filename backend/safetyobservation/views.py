@@ -14,11 +14,24 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 class SafetyObservationViewSet(viewsets.ModelViewSet):
-    queryset = SafetyObservation.objects.all().order_by('-created_at')
     serializer_class = SafetyObservationSerializer
     permission_classes = [IsAuthenticated, SafetyObservationPermission]
     lookup_field = 'observationID'
     model = SafetyObservation  # Required for permission decorator
+
+    def get_queryset(self):
+        """PROJECT ISOLATION: Filter by user's project"""
+        user = self.request.user
+        
+        # Master admin sees all data
+        if user.is_superuser or (hasattr(user, 'admin_type') and user.admin_type == 'master'):
+            return SafetyObservation.objects.all().order_by('-created_at')
+        
+        # PROJECT ISOLATION: Filter by user's project
+        if not user.project:
+            return SafetyObservation.objects.none()
+        
+        return SafetyObservation.objects.filter(project=user.project).order_by('-created_at')
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -26,7 +39,16 @@ class SafetyObservationViewSet(viewsets.ModelViewSet):
         return context
 
     def perform_create(self, serializer):
-        observation = serializer.save(created_by=self.request.user)
+        """PROJECT ISOLATION: Auto-assign project on creation"""
+        # PROJECT ISOLATION: Ensure user has a project
+        if not self.request.user.project:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError("User must be assigned to a project to create safety observations.")
+        
+        observation = serializer.save(
+            created_by=self.request.user,
+            project=self.request.user.project
+        )
 
         # Send assignment notification if someone is assigned
         if observation.correctiveActionAssignedTo:
@@ -423,3 +445,35 @@ class SafetyObservationViewSet(viewsets.ModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=False, methods=['get'], url_path='project-users')
+    def project_users(self, request):
+        """Get users from the same project for assignment dropdown"""
+        user = request.user
+        
+        # PROJECT ISOLATION: Only return users from the same project
+        if not user.project:
+            return Response({
+                'error': 'Project access required',
+                'message': 'User must be assigned to a project to access project users.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get users from the same project
+        project_users = User.objects.filter(
+            project=user.project,
+            is_active=True
+        ).exclude(admin_type='master').values('id', 'username', 'name', 'surname')
+        
+        # Format for dropdown
+        users_list = []
+        for user_data in project_users:
+            display_name = f"{user_data['name']} {user_data['surname']}".strip() if user_data['name'] else user_data['username']
+            users_list.append({
+                'username': user_data['username'],
+                'display_name': display_name
+            })
+        
+        return Response({
+            'users': users_list,
+            'count': len(users_list)
+        })

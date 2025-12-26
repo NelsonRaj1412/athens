@@ -66,11 +66,13 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
             return InductionTraining.objects.none()
             
         user = self.request.user
-        user_project = getattr(user, 'project', None)
         
-        if user_project:
-            return InductionTraining.objects.filter(project=user_project)
-        return InductionTraining.objects.filter(created_by=user)
+        # PROJECT ISOLATION: Ensure user has a project
+        if not user.project:
+            return InductionTraining.objects.none()
+        
+        # PROJECT ISOLATION: Return only induction trainings from the same project
+        return InductionTraining.objects.filter(project=user.project)
     
     def list(self, request, *args, **kwargs):
         # Check EPC Safety Department access
@@ -93,8 +95,12 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
         return super().create(request, *args, **kwargs)
     
     def perform_create(self, serializer):
-        user_project = getattr(self.request.user, 'project', None)
-        serializer.save(created_by=self.request.user, project=user_project)
+        # PROJECT ISOLATION: Ensure user has a project
+        if not self.request.user.project:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError("User must be assigned to a project to create induction training.")
+        
+        serializer.save(created_by=self.request.user, project=self.request.user.project)
 
     @require_permission('edit')
     def update(self, request, *args, **kwargs):
@@ -114,8 +120,16 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
     def attendance(self, request, pk=None):
         """
         Submit attendance for an induction training and update worker employment status
+        PROJECT-BOUNDED: Only allows attendance for inductions in the same project.
         """
         induction = self.get_object()
+        
+        # PROJECT ISOLATION: Verify induction belongs to user's project
+        if induction.project != request.user.project:
+            return Response({
+                'error': 'Access denied',
+                'message': 'You can only manage attendance for inductions in your project.'
+            }, status=status.HTTP_403_FORBIDDEN)
 
         if request.method == 'GET':
             # Return attendance records for the induction training
@@ -136,19 +150,21 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
         created_records = []
         present_worker_ids = []
         present_user_ids = []
+        failed_records = []
         
         for record in attendance_records:
             participant_type = record.get('participant_type', 'worker')
             participant_id = record.get('participant_id') or record.get('worker_id')
             
             if not participant_id:
+                failed_records.append({'record': record, 'error': 'Missing participant_id'})
                 continue
             
             try:
                 if participant_type == 'worker':
                     # Handle worker attendance
                     from worker.models import Worker
-                    worker = Worker.objects.get(id=participant_id)
+                    worker = Worker.objects.get(id=participant_id, project=request.user.project)  # PROJECT ISOLATION
                     
                     # Create attendance record
                     attendance = InductionAttendance.objects.create(
@@ -166,13 +182,13 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
                         
                 elif participant_type == 'user':
                     # Handle user attendance - store as negative ID to distinguish from workers
-                    user = User.objects.get(id=participant_id)
+                    user = User.objects.get(id=participant_id, project=request.user.project)  # PROJECT ISOLATION
                     
                     # Create attendance record with negative worker_id for users
                     attendance = InductionAttendance.objects.create(
                         induction=induction,
                         worker_id=-participant_id,  # Negative ID for users
-                        worker_name=record.get('name', user.get_full_name() or user.username),
+                        worker_name=record.get('worker_name') or record.get('name', user.get_full_name() or user.username),
                         status=record.get('status', 'present')
                     )
                     
@@ -182,22 +198,35 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
                     if record.get('status') == 'present':
                         present_user_ids.append(participant_id)
                     
-            except (Worker.DoesNotExist, User.DoesNotExist):
+            except Worker.DoesNotExist:
+                failed_records.append({'record': record, 'error': f'Worker with ID {participant_id} not found in project'})
+                continue
+            except User.DoesNotExist:
+                failed_records.append({'record': record, 'error': f'User with ID {participant_id} not found in project'})
+                continue
+            except Exception as e:
+                failed_records.append({'record': record, 'error': str(e)})
                 continue
         
         # Update induction training status to completed
         induction.status = 'completed'
         induction.save()
         
-        # Update employment status of present workers to "deployed"
+        # PROJECT ISOLATION: Update employment status only for workers in the same project
         if present_worker_ids:
-            Worker.objects.filter(id__in=present_worker_ids).update(employment_status='deployed')
+            Worker.objects.filter(
+                id__in=present_worker_ids, 
+                project=request.user.project  # PROJECT ISOLATION
+            ).update(employment_status='deployed')
         
         return Response({
             'message': 'Attendance submitted successfully',
             'records_created': len(created_records),
             'workers_deployed': len(present_worker_ids),
-            'users_attended': len(present_user_ids)
+            'users_attended': len(present_user_ids),
+            'failed_records': failed_records,
+            'total_submitted': len(attendance_records),
+            'success_rate': f"{(len(created_records)/len(attendance_records)*100):.1f}%" if attendance_records else "0%"
         }, status=status.HTTP_201_CREATED)
     
     @action(detail=False, methods=['get'])
@@ -389,6 +418,7 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
         """
         Get workers and users who have NOT completed induction training.
         Only EPC Safety Department users can access this endpoint.
+        PROJECT-BOUNDED: Only returns data from the same project as the requesting user.
         """
         try:
             # Check if user is EPC Safety Department
@@ -398,25 +428,35 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
                     'message': 'Only EPC Safety Department users can access this endpoint.'
                 }, status=status.HTTP_403_FORBIDDEN)
             
+            # PROJECT ISOLATION: Ensure user has a project
+            if not request.user.project:
+                return Response({
+                    'error': 'Access denied',
+                    'message': 'User must be assigned to a project to access this data.'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
             from worker.models import Worker
             from worker.serializers import WorkerSerializer
             from authentication.serializers import AdminUserCommonSerializer
 
-            # Get workers who have NOT completed induction training
+            # PROJECT ISOLATION: Get attendance records only from current project's inductions
+            project_inductions = InductionTraining.objects.filter(project=request.user.project)
             completed_worker_ids = InductionAttendance.objects.filter(
+                induction__in=project_inductions,
                 status='present'
             ).values_list('worker_id', flat=True)
             
-            # Get workers with 'initiated' status who haven't completed induction
+            # PROJECT ISOLATION: Get workers only from the same project
             uninducted_workers = Worker.objects.filter(
+                project=request.user.project,  # Same project only
                 employment_status='initiated'
             ).exclude(
                 id__in=completed_worker_ids
             ).select_related('created_by', 'project').order_by('name', 'surname')
 
-            # Get admin users who haven't completed induction training
-            # Check for users who have attendance records (negative worker_id indicates user)
+            # PROJECT ISOLATION: Get attendance records for users only from current project's inductions
             completed_user_ids = InductionAttendance.objects.filter(
+                induction__in=project_inductions,
                 status='present',
                 worker_id__lt=0  # Negative IDs are users
             ).values_list('worker_id', flat=True)
@@ -424,7 +464,7 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
             # Convert negative IDs back to positive user IDs
             completed_user_ids = [-id for id in completed_user_ids]
             
-            # Get all active admin users who are not master/projectadmin and haven't completed induction
+            # PROJECT ISOLATION: Get admin users only from the same project
             uninducted_users = User.objects.filter(
                 is_active=True,
                 user_type='adminuser',

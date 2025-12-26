@@ -20,6 +20,16 @@ class Mom(models.Model):
     status = models.CharField(max_length=20, choices=MeetingStatus.choices, default=MeetingStatus.SCHEDULED)
     completed_at = models.DateTimeField(null=True, blank=True)
     duration_minutes = models.IntegerField(null=True, blank=True)
+    
+    # PROJECT ISOLATION: Add project field
+    project = models.ForeignKey(
+        'authentication.Project',
+        on_delete=models.CASCADE,
+        related_name='mom_records',
+        null=True,
+        blank=True
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

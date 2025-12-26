@@ -11,6 +11,7 @@ export interface InductionTrainingData {
   status: 'planned' | 'completed' | 'cancelled';
   created_at: string;
   updated_at: string;
+  attendances?: InductionTrainingAttendanceData[];
 }
 
 export interface InductionTrainingAttendanceData {
@@ -18,6 +19,8 @@ export interface InductionTrainingAttendanceData {
   key: string;
   induction_training_id: number;
   worker_id: number;
+  participant_type?: 'worker' | 'user';
+  participant_id?: number;
   worker_name: string;
   worker_photo: string;
   attendance_photo: string;

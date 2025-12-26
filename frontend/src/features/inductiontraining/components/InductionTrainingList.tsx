@@ -58,8 +58,13 @@ const InductionTrainingList: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   
-  const { usertype, userId, django_user_type } = useAuthStore();
+  const { usertype, userId, django_user_type, department } = useAuthStore();
   const hasPermission = ['clientuser', 'epcuser', 'contractoruser'].includes(usertype || '');
+  // Temporarily allow all EPC users - backend will handle the restriction
+  const isEpcSafetyUser = usertype === 'epcuser';
+  
+  // Debug logging
+  console.log('Auth Store Values:', { usertype, department, isEpcSafetyUser });
   
   // Permission control
   const { executeWithPermission, showPermissionModal, permissionRequest, closePermissionModal, onPermissionRequestSuccess } = usePermissionControl({
@@ -77,7 +82,7 @@ const InductionTrainingList: React.FC = () => {
   const fetchInductionTrainings = useCallback(async (navigateToNewItem = false) => {
     setLoading(true);
     try {
-      const endpoint = hasPermission ? `/induction/?created_by=${userId}` : '/induction/';
+      const endpoint = hasPermission && isEpcSafetyUser ? `/induction/?created_by=${userId}` : '/induction/';
       const response = await api.get(endpoint);
       console.log('Induction Training API Response:', response.data);
       
@@ -102,13 +107,13 @@ const InductionTrainingList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [hasPermission, userId, message, inductionTrainings.length, pageSize]);
+  }, [hasPermission, isEpcSafetyUser, userId, message, inductionTrainings.length, pageSize]);
 
   useEffect(() => {
-    if (hasPermission) {
+    if (hasPermission && isEpcSafetyUser) {
       fetchInductionTrainings();
     }
-  }, [fetchInductionTrainings, hasPermission]);
+  }, [fetchInductionTrainings, hasPermission, isEpcSafetyUser]);
   
   const handleCancelModals = useCallback(() => {
     setViewingIT(null);
@@ -308,13 +313,17 @@ const InductionTrainingList: React.FC = () => {
   ], [getStatusTag, handleDelete, handleEdit]);
 
   // --- Render Logic ---
-  if (!hasPermission) {
+  if (!hasPermission || !isEpcSafetyUser) {
     return (
       <PageLayout title="Induction Training" subtitle="Access denied">
         <PermissionDeniedContainer>
           <StopOutlined style={{ fontSize: '48px', color: 'var(--color-text-muted)', marginBottom: '24px' }} />
-          <Title level={4} style={{ color: 'var(--color-text-base)', marginBottom: '8px' }}>Permission Denied</Title>
-          <Text type="secondary">Your user role does not have permission to view this page.</Text>
+          <Title level={4} style={{ color: 'var(--color-text-base)', marginBottom: '8px' }}>Access Denied</Title>
+          <Text type="secondary">
+            {!hasPermission 
+              ? 'Your user role does not have permission to view this page.' 
+              : 'Only EPC Safety Department users can access induction training management.'}
+          </Text>
         </PermissionDeniedContainer>
       </PageLayout>
     );

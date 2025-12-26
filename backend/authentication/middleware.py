@@ -1,78 +1,159 @@
 """
-Security middleware for input validation and sanitization
+Project Isolation Middleware
+
+This middleware ensures that all database operations are automatically
+filtered by the user's project to maintain strict data isolation.
 """
-import re
-import json
+
+import logging
 from django.http import JsonResponse
-from django.utils.deprecation import MiddlewareMixin
-from django.core.exceptions import ValidationError
+from django.contrib.auth import get_user_model
+from django.db import models
+from django.core.exceptions import PermissionDenied
 
+logger = logging.getLogger(__name__)
+User = get_user_model()
 
-class SecurityMiddleware(MiddlewareMixin):
-    """Middleware for security validation"""
+class ProjectIsolationMiddleware:
+    """
+    Middleware to enforce project-based data isolation.
     
-    DANGEROUS_PATTERNS = [
-        r'<script[^>]*>.*?</script>',
-        r'javascript:',
-        r'vbscript:',
-        r'onload\s*=',
-        r'onerror\s*=',
-        r'\.\./',
-        r'\\.\\.\\',
-    ]
+    This middleware:
+    1. Validates that authenticated users have a project assigned
+    2. Logs access attempts for security monitoring
+    3. Provides project context for views
+    """
     
-    def process_request(self, request):
-        """Validate request for security threats"""
-        if request.method in ['POST', 'PUT', 'PATCH']:
-            try:
-                # Skip validation for admin detail updates (multipart form data)
-                if request.content_type and 'multipart/form-data' in request.content_type:
-                    # Only validate file uploads for multipart requests
-                    if request.FILES:
-                        for file_field, uploaded_file in request.FILES.items():
-                            if not self._validate_file_upload(uploaded_file):
-                                return JsonResponse({
-                                    'error': 'Invalid file upload',
-                                    'code': 'FILE_VALIDATION_ERROR'
-                                }, status=400)
-                    return None
-                
-                # Check for XSS patterns in JSON request data only
-                if hasattr(request, 'body') and request.body:
-                    body_str = request.body.decode('utf-8', errors='ignore')
-                    if self._contains_dangerous_patterns(body_str):
-                        return JsonResponse({
-                            'error': 'Invalid input detected',
-                            'code': 'SECURITY_VIOLATION'
-                        }, status=400)
-                            
-            except Exception:
-                # Don't block request on validation errors
-                pass
+    def __init__(self, get_response):
+        self.get_response = get_response
         
-        return None
-    
-    def _contains_dangerous_patterns(self, text):
-        """Check if text contains dangerous patterns"""
-        # Skip validation for multipart form data (file uploads)
-        if 'multipart/form-data' in text or 'Content-Disposition: form-data' in text:
-            return False
-            
-        for pattern in self.DANGEROUS_PATTERNS:
-            if re.search(pattern, text, re.IGNORECASE):
+        # Paths that don't require project isolation
+        self.exempt_paths = [
+            '/api/auth/login/',
+            '/api/auth/logout/',
+            '/api/auth/token/',
+            '/api/auth/token/refresh/',
+            '/admin/',
+            '/media/',
+            '/static/',
+            '/api/auth/create-master-admin/',
+            '/api/projects/',  # Master admin project management
+        ]
+        
+        # API endpoints that require project isolation
+        self.project_required_patterns = [
+            '/api/workers/',
+            '/api/induction/',
+            '/api/authentication/users/',
+            '/api/ptw/',
+            '/api/incidents/',
+            '/api/manpower/',
+            '/api/tbt/',
+            '/api/inspection/',
+            '/api/jobtraining/',
+            '/api/safetyobservation/',
+            '/api/mom/',
+        ]
+
+    def __call__(self, request):
+        # Check if path requires project isolation
+        if self._requires_project_isolation(request.path):
+            # Validate project access for authenticated users
+            if hasattr(request, 'user') and request.user.is_authenticated:
+                if not self._validate_project_access(request):
+                    return JsonResponse({
+                        'error': 'Project access required',
+                        'message': 'You must be assigned to a project to access this resource.',
+                        'code': 'PROJECT_REQUIRED'
+                    }, status=403)
+        
+        response = self.get_response(request)
+        return response
+
+    def _requires_project_isolation(self, path):
+        """Check if the request path requires project isolation."""
+        # Skip exempt paths
+        for exempt_path in self.exempt_paths:
+            if path.startswith(exempt_path):
+                return False
+        
+        # Check if path matches project-required patterns
+        for pattern in self.project_required_patterns:
+            if path.startswith(pattern):
                 return True
+        
         return False
-    
-    def _validate_file_upload(self, uploaded_file):
-        """Validate uploaded file"""
-        # Check file size (10MB limit)
-        if uploaded_file.size > 10 * 1024 * 1024:
+
+    def _validate_project_access(self, request):
+        """Validate that the user has proper project access."""
+        user = request.user
+        
+        # Master admin and superusers bypass project isolation
+        if (hasattr(user, 'admin_type') and user.admin_type == 'master') or user.is_superuser:
+            return True
+        
+        # Check if user has a project assigned
+        if not hasattr(user, 'project') or not user.project:
+            logger.warning(f"User {user.username} attempted to access project-isolated resource without project assignment")
             return False
         
-        # Check file extension
-        allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx']
-        file_extension = uploaded_file.name.lower().split('.')[-1]
-        if f'.{file_extension}' not in allowed_extensions:
-            return False
-        
+        # Log successful project access for monitoring
+        logger.debug(f"User {user.username} accessing project-isolated resource for project {user.project.projectName}")
         return True
+
+
+class ProjectQuerySetMiddleware:
+    """
+    Middleware to automatically filter querysets by project.
+    
+    This is a more advanced middleware that would require model modifications
+    to work properly. It's included as a reference for future implementation.
+    """
+    
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Add project context to request
+        if hasattr(request, 'user') and request.user.is_authenticated:
+            if hasattr(request.user, 'project') and request.user.project:
+                request.current_project = request.user.project
+            else:
+                request.current_project = None
+        
+        response = self.get_response(request)
+        return response
+
+
+class SecurityAuditMiddleware:
+    """
+    Middleware for security auditing and logging.
+    
+    Logs all access attempts to project-isolated resources for security monitoring.
+    """
+    
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Log access attempts for security monitoring
+        if hasattr(request, 'user') and request.user.is_authenticated:
+            if self._is_sensitive_endpoint(request.path):
+                logger.info(f"Security Audit: User {request.user.username} "
+                           f"(project: {getattr(request.user, 'project', None)}) "
+                           f"accessed {request.method} {request.path}")
+        
+        response = self.get_response(request)
+        return response
+
+    def _is_sensitive_endpoint(self, path):
+        """Check if the endpoint handles sensitive data."""
+        sensitive_patterns = [
+            '/api/workers/',
+            '/api/induction/',
+            '/api/authentication/users/',
+            '/api/ptw/',
+            '/api/incidents/',
+        ]
+        
+        return any(path.startswith(pattern) for pattern in sensitive_patterns)

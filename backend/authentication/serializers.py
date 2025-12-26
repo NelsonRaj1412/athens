@@ -198,23 +198,27 @@ logger = logging.getLogger(__name__)
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         logger.debug(f"Validating token obtain pair for username: {attrs.get('username')}")
-        data = super().validate(attrs)
+        
+        # Use Django's built-in authentication but handle password validation more gracefully
+        try:
+            data = super().validate(attrs)
+        except Exception as e:
+            logger.error(f"Authentication failed for {attrs.get('username')}: {str(e)}")
+            raise
+            
         user = self.user.__class__.objects.get(pk=self.user.pk)
         
         # Check user_type first, then admin_type
-        if user.user_type == 'master':
+        # Handle master users - both user_type='master' and admin_type='master'
+        if user.user_type == 'master' or (user.user_type == 'projectadmin' and user.admin_type == 'master'):
             data['usertype'] = 'master'
             data['username'] = user.username
         elif user.user_type in ['superadmin', 'masteradmin']:
             data['usertype'] = 'MASTER_ADMIN'
             data['username'] = user.username
         elif user.user_type == 'projectadmin':
-            # Handle master admin specially
-            if user.admin_type == 'master':
-                data['usertype'] = 'MASTER_ADMIN'
-                data['username'] = user.username
             # For multiple contractor admins, append index to usertype if admin_type is contractor
-            elif user.admin_type == 'contractor':
+            if user.admin_type == 'contractor':
                 # Attempt to find index of this contractor admin among all contractor admins in the project
                 if user.project:  # Only if user has a project
                     contractor_admins = CustomUser.objects.filter(project=user.project, user_type='projectadmin', admin_type='contractor').order_by('id')
@@ -244,6 +248,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data['user_id'] = user.id
         data['django_user_type'] = user.user_type  # <-- Add this line
         data['grade'] = getattr(user, 'grade', None)  # Add grade field
+        data['department'] = getattr(user, 'department', None)  # Add department field
         # Add project_id to token response if user has a project
         if user.project:
             data['project_id'] = user.project.id
@@ -254,7 +259,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data['is_approved'] = True  # Default to approved
         data['has_submitted_details'] = True  # Default to submitted
 
-        if user.user_type == 'projectadmin':
+        # Master users are always approved and don't need to submit details
+        if user.user_type == 'master' or (user.user_type == 'projectadmin' and user.admin_type == 'master'):
+            data['is_approved'] = True
+            data['has_submitted_details'] = True
+        elif user.user_type == 'projectadmin':
             try:
                 admin_detail = user.admin_detail
                 data['has_submitted_details'] = bool(
@@ -290,12 +299,13 @@ class CompanyDetailSerializer(serializers.ModelSerializer):
     # This explicitly defines 'company_logo' as an image field, making it optional.
     company_logo = serializers.ImageField(required=False, allow_null=True, max_length=None, use_url=True)
 
-    # You can keep these explicit definitions or remove them, as ModelSerializer
-    # will infer them. Keeping them is fine for clarity.
-    company_name = serializers.CharField(required=True)
-    registered_office_address = serializers.CharField(required=True)
-    contact_phone = serializers.CharField(required=True)
-    contact_email = serializers.EmailField(required=True)
+    # Make all fields optional for partial updates
+    company_name = serializers.CharField(required=False, allow_blank=True)
+    registered_office_address = serializers.CharField(required=False, allow_blank=True)
+    pan = serializers.CharField(required=False, allow_blank=True)
+    gst = serializers.CharField(required=False, allow_blank=True)
+    contact_phone = serializers.CharField(required=False, allow_blank=True)
+    contact_email = serializers.EmailField(required=False, allow_blank=True)
 
     class Meta:
         model = CompanyDetail

@@ -33,23 +33,32 @@ class WorkerViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Filter workers based on user type and permissions
+        PROJECT-BOUNDED: Only returns workers from the same project as the requesting user.
         """
         user = self.request.user
         
-        # Superusers see all workers
+        # Superusers see all workers (for system administration)
         if user.is_superuser:
             return Worker.objects.all()
-            
-        # Return all workers for now (temporary for debugging)
-        return Worker.objects.all()
+        
+        # PROJECT ISOLATION: Ensure user has a project
+        if not user.project:
+            return Worker.objects.none()
+        
+        # PROJECT ISOLATION: Return only workers from the same project
+        return Worker.objects.filter(project=user.project)
     
     def perform_create(self, serializer):
         """
         Set the created_by field and project to the current user when creating a worker.
+        PROJECT-BOUNDED: Automatically assigns the user's project to ensure data isolation.
         """
-        # Get user's project - assuming user has a project relationship
-        user_project = getattr(self.request.user, 'project', None)
-        serializer.save(created_by=self.request.user, project=user_project)
+        # PROJECT ISOLATION: Ensure user has a project
+        if not self.request.user.project:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError("User must be assigned to a project to create workers.")
+        
+        serializer.save(created_by=self.request.user, project=self.request.user.project)
     
     def list(self, request, *args, **kwargs):
         """
@@ -194,6 +203,7 @@ class WorkerViewSet(viewsets.ModelViewSet):
     def by_employment_status(self, request):
         """
         Get workers filtered by employment status (respects user permissions)
+        PROJECT-BOUNDED: Only returns workers from the same project.
         """
         status_param = request.query_params.get('status')
         if not status_param:
@@ -210,7 +220,7 @@ class WorkerViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Filter workers by employment status using the proper queryset (respects permissions)
+        # PROJECT ISOLATION: Filter workers by employment status using the proper queryset (respects permissions)
         workers = self.get_queryset().filter(employment_status=status_param)
         serializer = self.get_serializer(workers, many=True)
         return Response(serializer.data)
@@ -219,6 +229,7 @@ class WorkerViewSet(viewsets.ModelViewSet):
     def update_employment_status(self, request):
         """
         Update employment status for multiple workers
+        PROJECT-BOUNDED: Only updates workers from the same project.
         """
         worker_ids = request.data.get('worker_ids', [])
         employment_status = request.data.get('employment_status')
@@ -237,11 +248,11 @@ class WorkerViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Update workers
+        # PROJECT ISOLATION: Update workers only from the same project
         updated_count = 0
         for worker_id in worker_ids:
             try:
-                worker = Worker.objects.get(id=worker_id)
+                worker = Worker.objects.get(id=worker_id, project=request.user.project)  # PROJECT ISOLATION
                 worker.employment_status = employment_status
                 worker.save()
                 updated_count += 1
@@ -258,31 +269,58 @@ class WorkerViewSet(viewsets.ModelViewSet):
 def check_user_permissions(request):
     """
     A simple endpoint to check the current user's permissions.
+    PROJECT-BOUNDED: Shows project-specific data counts.
     """
     user = request.user
+    
+    # PROJECT ISOLATION: Count workers only from user's project
+    if user.project:
+        workers_in_project = Worker.objects.filter(project=user.project).count()
+        workers_created_by_user = Worker.objects.filter(created_by=user, project=user.project).count()
+    else:
+        workers_in_project = 0
+        workers_created_by_user = 0
+    
     return Response({
         'username': user.username,
         'admin_type': getattr(user, 'admin_type', None),
         'user_type': getattr(user, 'user_type', None),
+        'project': user.project.projectName if user.project else None,
+        'project_id': user.project.id if user.project else None,
         'permissions': list(user.get_all_permissions()),
         'has_manage_workers': user.has_perm('worker.manage_workers'),
         'is_staff': user.is_staff,
         'is_superuser': user.is_superuser,
         'total_workers_in_db': Worker.objects.count(),
-        'workers_created_by_user': Worker.objects.filter(created_by=user).count(),
+        'workers_in_project': workers_in_project,
+        'workers_created_by_user': workers_created_by_user,
     })
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def debug_worker_data(request):
+    """
+    Debug endpoint showing project-bounded worker data.
+    """
     user = request.user
-    all_workers = Worker.objects.all()
+    
+    # PROJECT ISOLATION: Show project-specific data
+    if user.project:
+        project_workers = Worker.objects.filter(project=user.project)
+        user_created_workers = Worker.objects.filter(created_by=user, project=user.project)
+    else:
+        project_workers = Worker.objects.none()
+        user_created_workers = Worker.objects.none()
+    
     return Response({
-        'total_workers': all_workers.count(),
-        'user_created_workers': Worker.objects.filter(created_by=user).count(),
-        'first_5_workers': [{
+        'user_project': user.project.projectName if user.project else None,
+        'total_workers_system': Worker.objects.count(),
+        'workers_in_project': project_workers.count(),
+        'user_created_workers': user_created_workers.count(),
+        'first_5_project_workers': [{
             'name': w.name,
             'worker_id': w.worker_id,
             'created_by': w.created_by.username if w.created_by else None,
-        } for w in all_workers[:5]]
+            'project': w.project.projectName if w.project else None,
+        } for w in project_workers[:5]]
     })

@@ -177,7 +177,8 @@ export const performSecureTokenRefresh = async (): Promise<string | null> => {
         authState.django_user_type,
         authState.userId,
         authState.isPasswordResetRequired,
-        authState.grade
+        authState.grade,
+        authState.department
       );
 
       return newToken;

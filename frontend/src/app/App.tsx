@@ -125,6 +125,8 @@ import AIBotWidget from '@features/ai_bot/components/AIBotWidget';
 // Voice Translator
 import VoiceTranslator from '../components/VoiceTranslator';
 
+import { useInductionTrainingEnforcement, InductionTrainingGuard } from '../hooks/useInductionTrainingEnforcement';
+
 // --- Helper components and event listeners ---
 const ProfileWrapper: React.FC = () => {
   const { userToApprove, onApprovalSuccess } = useOutletContext<{
@@ -192,7 +194,8 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <NotificationsProvider>
-        <Suspense fallback={loadingSpinner}>
+        <InductionTrainingGuard>
+          <Suspense fallback={loadingSpinner}>
           <Routes>
             <Route path="/login" element={<SigninApp />} />
             <Route path="/dashboard" element={<ProtectedDashboard />}>
@@ -358,6 +361,7 @@ const App: React.FC = () => {
             <Route path="*" element={<SigninApp />} />
           </Routes>
         </Suspense>
+        </InductionTrainingGuard>
       </NotificationsProvider>
     </ErrorBoundary>
   );

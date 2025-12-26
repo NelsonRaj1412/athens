@@ -135,7 +135,7 @@ const LoginPage: React.FC = () => {
         password: values.password
       });
 
-      const { access, refresh, username, usertype, django_user_type, userId, user_id, isPasswordResetRequired, grade, project_id } = response.data;
+      const { access, refresh, username, usertype, django_user_type, userId, user_id, isPasswordResetRequired, grade, department, project_id } = response.data;
       const token = access || response.data.token;
 
       if (!token || !refresh) {
@@ -153,6 +153,7 @@ const LoginPage: React.FC = () => {
         userId || user_id,
         isPasswordResetRequired,
         grade,
+        department,
         response.data.is_approved,
         response.data.has_submitted_details
       );

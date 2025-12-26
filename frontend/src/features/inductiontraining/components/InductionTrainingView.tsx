@@ -57,19 +57,25 @@ const InductionTrainingView: React.FC<InductionTrainingViewProps> = ({ induction
     >
       <StyledDescriptions bordered column={1} size="middle">
         <Descriptions.Item label={<Space><BookOutlined /> Title</Space>}>
-          {inductionTraining.title}
+          <Text strong>{inductionTraining.title}</Text>
         </Descriptions.Item>
 
+        {inductionTraining.description && (
+          <Descriptions.Item label={<Space><InfoCircleOutlined /> Description</Space>}>
+            <Text>{inductionTraining.description}</Text>
+          </Descriptions.Item>
+        )}
+
         <Descriptions.Item label={<Space><CalendarOutlined /> Date</Space>}>
-          {inductionTraining.date ? moment(inductionTraining.date).format('MMMM D, YYYY') : 'N/A'}
+          <Text>{inductionTraining.date ? moment(inductionTraining.date).format('MMMM D, YYYY') : 'N/A'}</Text>
         </Descriptions.Item>
         
         <Descriptions.Item label={<Space><EnvironmentOutlined /> Location</Space>}>
-          {inductionTraining.location}
+          <Text>{inductionTraining.location || 'Not specified'}</Text>
         </Descriptions.Item>
         
         <Descriptions.Item label={<Space><UserOutlined /> Conducted By</Space>}>
-          {inductionTraining.conducted_by}
+          <Text>{inductionTraining.conducted_by || 'Not assigned'}</Text>
         </Descriptions.Item>
         
         <Descriptions.Item label={<Space><InfoCircleOutlined /> Status</Space>}>
@@ -77,12 +83,26 @@ const InductionTrainingView: React.FC<InductionTrainingViewProps> = ({ induction
         </Descriptions.Item>
 
         <Descriptions.Item label={<Space><ClockCircleOutlined /> Created At</Space>}>
-          {formatDate(inductionTraining.created_at)}
+          <Text type="secondary">{formatDate(inductionTraining.created_at)}</Text>
         </Descriptions.Item>
         
         <Descriptions.Item label={<Space><EditOutlined /> Last Updated</Space>}>
-          {formatDate(inductionTraining.updated_at)}
+          <Text type="secondary">{formatDate(inductionTraining.updated_at)}</Text>
         </Descriptions.Item>
+
+        {inductionTraining.attendances && inductionTraining.attendances.length > 0 && (
+          <Descriptions.Item label={<Space><UserOutlined /> Attendance Summary</Space>}>
+            <Space direction="vertical" size="small">
+              <Text>Total Participants: <strong>{inductionTraining.attendances.length}</strong></Text>
+              <Text>Present: <strong style={{color: 'var(--ant-color-success)'}}>
+                {inductionTraining.attendances.filter(a => a.status === 'present').length}
+              </strong></Text>
+              <Text>Absent: <strong style={{color: 'var(--ant-color-error)'}}>
+                {inductionTraining.attendances.filter(a => a.status === 'absent').length}
+              </strong></Text>
+            </Space>
+          </Descriptions.Item>
+        )}
       </StyledDescriptions>
     </Modal>
   );

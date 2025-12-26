@@ -101,7 +101,7 @@ def list_users(request):
 class CompanyDetailRetrieveUpdateView(generics.RetrieveUpdateAPIView):
     serializer_class = CompanyDetailSerializer
     permission_classes = [permissions.IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_object(self):
         company_detail, created = CompanyDetail.objects.get_or_create(user=self.request.user)
@@ -812,11 +812,18 @@ class ProjectAdminUserCreateView(APIView):
 class ProjectAdminUserListView(APIView):
     """
     Project admin sees all adminuser users except themselves.
+    PROJECT-BOUNDED: Only shows users from the same project.
     """
     permission_classes = (IsAuthenticated,)
 
     def get(self, request):
-        users = CustomUser.objects.filter(user_type='adminuser', created_by=request.user).exclude(id=request.user.id)
+        # PROJECT ISOLATION: Filter users by same project and created by current user
+        users = CustomUser.objects.filter(
+            user_type='adminuser', 
+            created_by=request.user,
+            project=request.user.project  # Same project only
+        ).exclude(id=request.user.id)
+        
         from .serializers import AdminUserCommonSerializer
         serializer = AdminUserCommonSerializer(users, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -824,12 +831,18 @@ class ProjectAdminUserListView(APIView):
 class ProjectAdminUserUpdateView(APIView):
     """
     Project admin can update only users they created.
+    PROJECT-BOUNDED: Only allows updates to users in the same project.
     """
     permission_classes = (IsAuthenticated,)
 
     def put(self, request, pk):
         try:
-            user = CustomUser.objects.get(pk=pk, created_by=request.user)
+            # PROJECT ISOLATION: Ensure user belongs to same project and was created by current user
+            user = CustomUser.objects.get(
+                pk=pk, 
+                created_by=request.user,
+                project=request.user.project  # Same project only
+            )
         except CustomUser.DoesNotExist:
             logger.warning(f"User update attempted for non-existent or unauthorized user: {sanitize_log_input(str(pk))} by {sanitize_log_input(request.user.username)}")
             return Response({"error": "User not found or not allowed."}, status=status.HTTP_404_NOT_FOUND)
@@ -850,12 +863,18 @@ class ProjectAdminUserUpdateView(APIView):
 class ProjectAdminUserDeleteView(APIView):
     """
     Project admin can delete only users they created.
+    PROJECT-BOUNDED: Only allows deletion of users in the same project.
     """
     permission_classes = (IsAuthenticated,)
 
     def delete(self, request, pk):
         try:
-            user = CustomUser.objects.get(pk=pk, created_by=request.user)
+            # PROJECT ISOLATION: Ensure user belongs to same project and was created by current user
+            user = CustomUser.objects.get(
+                pk=pk, 
+                created_by=request.user,
+                project=request.user.project  # Same project only
+            )
         except CustomUser.DoesNotExist:
             logger.warning(f"User deletion attempted for non-existent or unauthorized user: {sanitize_log_input(str(pk))} by {sanitize_log_input(request.user.username)}")
             return Response({"error": "User not found or not allowed."}, status=status.HTTP_404_NOT_FOUND)
@@ -958,7 +977,12 @@ class UserDetailPendingView(APIView):
     
     def get(self, request, user_id):
         try:
-            user = CustomUser.objects.get(id=user_id, user_type='adminuser')
+            # PROJECT ISOLATION: Ensure user belongs to same project
+            user = CustomUser.objects.get(
+                id=user_id, 
+                user_type='adminuser',
+                project=request.user.project  # Same project only
+            )
             
             # Check if the requesting user is authorized to view this user detail
             if user.created_by != request.user:
@@ -1295,7 +1319,10 @@ class CurrentAdminDetailView(APIView):
         # EPC-centric logic: For all EPC users (epc and epcuser), use master admin's company logo
         if user.admin_type in ['epc', 'epcuser'] and not logo_url:
             try:
-                master_admin = CustomUser.objects.filter(admin_type='master').first()
+                # Find master admin - check both user_type='master' and admin_type='master'
+                master_admin = CustomUser.objects.filter(
+                    models.Q(user_type='master') | models.Q(admin_type='master')
+                ).first()
                 if master_admin:
                     company_detail = CompanyDetail.objects.filter(user=master_admin).first()
                     if company_detail and company_detail.company_logo:
@@ -1333,7 +1360,10 @@ class CurrentAdminDetailView(APIView):
         company_name = user.company_name
         if user.admin_type in ['epc', 'epcuser']:
             try:
-                master_admin = CustomUser.objects.filter(admin_type='master').first()
+                # Find master admin - check both user_type='master' and admin_type='master'
+                master_admin = CustomUser.objects.filter(
+                    models.Q(user_type='master') | models.Q(admin_type='master')
+                ).first()
                 if master_admin:
                     company_detail = CompanyDetail.objects.filter(user=master_admin).first()
                     if company_detail and company_detail.company_name:
@@ -1815,7 +1845,8 @@ class UnifiedCompanyDataView(APIView):
         logger.debug(f"Getting company data for user: {sanitize_log_input(user.username)} (type: {sanitize_log_input(user.user_type)}, admin_type: {sanitize_log_input(user.admin_type)})")
         
         # For master admin: ALWAYS use CompanyDetail (from CompanyDetails component)
-        if user.admin_type == 'master':
+        # Handle both user_type='master' and admin_type='master'
+        if user.user_type == 'master' or (user.user_type == 'projectadmin' and user.admin_type == 'master'):
             try:
                 company_detail = CompanyDetail.objects.filter(user=user).first()
                 
@@ -1844,7 +1875,10 @@ class UnifiedCompanyDataView(APIView):
         # EPC-centric logic: All EPC-related users inherit from Master Admin's CompanyDetail
         if user.admin_type in ['epc', 'epcuser']:
             try:
-                master_admin = CustomUser.objects.filter(admin_type='master').first()
+                # Find master admin - check both user_type='master' and admin_type='master'
+                master_admin = CustomUser.objects.filter(
+                    models.Q(user_type='master') | models.Q(admin_type='master')
+                ).first()
                 if master_admin:
                     company_detail = CompanyDetail.objects.filter(user=master_admin).first()
                     if company_detail:
@@ -1880,7 +1914,10 @@ class UnifiedCompanyDataView(APIView):
             # This is a fallback in case the above EPC logic didn't work
             if user.admin_type == 'epcuser':
                 try:
-                    master_admin = CustomUser.objects.filter(admin_type='master').first()
+                    # Find master admin - check both user_type='master' and admin_type='master'
+                    master_admin = CustomUser.objects.filter(
+                        models.Q(user_type='master') | models.Q(admin_type='master')
+                    ).first()
                     if master_admin:
                         company_detail = CompanyDetail.objects.filter(user=master_admin).first()
                         if company_detail:

@@ -60,6 +60,38 @@ def initiated_workers(request):
     viewset.request = request
     return viewset.initiated_workers(request)
 
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def induction_detail(request, pk):
+    """Handle GET and PUT for individual induction training"""
+    try:
+        from .models import InductionTraining
+        from .serializers import InductionTrainingSerializer
+        
+        # Get the induction training object with project isolation
+        if request.user.is_superuser or getattr(request.user, 'admin_type', None) == 'master':
+            induction = InductionTraining.objects.get(pk=pk)
+        else:
+            if not request.user.project:
+                return Response({'error': 'User must be assigned to a project'}, status=status.HTTP_403_FORBIDDEN)
+            induction = InductionTraining.objects.get(pk=pk, project=request.user.project)
+        
+        if request.method == 'GET':
+            serializer = InductionTrainingSerializer(induction)
+            return Response(serializer.data)
+        
+        elif request.method == 'PUT':
+            serializer = InductionTrainingSerializer(induction, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+    except InductionTraining.DoesNotExist:
+        return Response({'error': 'Induction training not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def attendance_view(request, pk):
@@ -95,6 +127,7 @@ router.register(r'manage', InductionTrainingViewSet, basename='induction')
 
 urlpatterns = [
     path('', create_induction_post),
+    path('<int:pk>/', induction_detail),
     path('initiated-workers/', initiated_workers),
     path('<int:pk>/attendance/', attendance_view),
     path('manage/', include(router.urls)),

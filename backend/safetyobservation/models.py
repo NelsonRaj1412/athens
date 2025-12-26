@@ -98,6 +98,15 @@ class SafetyObservation(models.Model):
         ('noise_violation', 'Noise Violation'),
     ], null=True, blank=True)
     
+    # PROJECT ISOLATION: Add project field
+    project = models.ForeignKey(
+        'authentication.Project',
+        on_delete=models.CASCADE,
+        related_name='safety_observations',
+        null=True,
+        blank=True
+    )
+    
     # System Fields
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -15,6 +15,7 @@ from .secure_views import SecureCompatibleLoginAPIView
 from .views_dashboard import dashboard_overview
 from .team_member_views import TeamMemberViewSet
 from .epc_logo_test import EPCLogoTestView
+from .induction_views import induction_status
 
 # Create router for team member endpoints
 router = DefaultRouter()
@@ -149,4 +150,7 @@ urlpatterns = [
     
     # EPC logo test endpoint
     path('epc-logo-test/', EPCLogoTestView.as_view(), name='epc_logo_test'),
+    
+    # Induction training status
+    path('induction-status/', induction_status, name='induction_status'),
 ]

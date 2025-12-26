@@ -299,6 +299,35 @@ export interface MenuConfig {
 }
 
 /**
+ * Check if user is EPC Safety Department
+ */
+const isEPCSafetyUser = (usertype?: string, department?: string): boolean => {
+  return usertype === 'epcuser' && department && department.toLowerCase().includes('safety');
+};
+
+/**
+ * Get training menu items based on user permissions
+ */
+const getTrainingMenuItems = (usertype?: string, django_user_type?: string, department?: string): MenuItem[] => {
+  const items: MenuItem[] = [];
+  
+  // EPC Safety Department gets induction training in addition to other training
+  if (isEPCSafetyUser(usertype, department)) {
+    items.push({ key: '/dashboard/inductiontraining', icon: <ReadOutlined />, label: 'Induction Training' });
+  }
+  
+  // All users get job training and toolbox talk (if they completed induction or are EPC Safety)
+  items.push({ key: '/dashboard/jobtraining', icon: <ReadOutlined />, label: 'Job Training' });
+  
+  // Toolbox talk for admin users
+  if (django_user_type === 'adminuser') {
+    items.push({ key: '/dashboard/toolboxtalk', icon: <BookOutlined />, label: 'Toolbox Talk' });
+  }
+  
+  return items;
+};
+
+/**
  * Restricted menu for unapproved users
  * Only shows essential items needed for profile completion and approval
  */
@@ -332,7 +361,8 @@ export const getMenuItemsForUser = (
   usertype?: string,
   django_user_type?: string,
   isApproved: boolean = true,
-  hasSubmittedDetails: boolean = true
+  hasSubmittedDetails: boolean = true,
+  department?: string
 ): MenuItem[] => {
 
   // If user is not approved, return restricted menu
@@ -373,11 +403,7 @@ export const getMenuItemsForUser = (
         key: 'training',
         icon: <AuditOutlined />,
         label: 'Training',
-        children: [
-          { key: '/dashboard/inductiontraining', icon: <ReadOutlined />, label: 'Induction Training' },
-          { key: '/dashboard/jobtraining', icon: <ReadOutlined />, label: 'Job Training' },
-          { key: '/dashboard/toolboxtalk', icon: <BookOutlined />, label: 'Toolbox Talk' },
-        ]
+        children: getTrainingMenuItems(usertype, django_user_type, department)
       },
       {
         key: 'safetyobservation',
@@ -482,11 +508,7 @@ export const getMenuItemsForUser = (
         key: 'training',
         icon: <AuditOutlined />,
         label: 'Training',
-        children: [
-          { key: '/dashboard/inductiontraining', icon: <ReadOutlined />, label: 'Induction Training' },
-          { key: '/dashboard/jobtraining', icon: <ReadOutlined />, label: 'Job Training' },
-          { key: '/dashboard/toolboxtalk', icon: <BookOutlined />, label: 'Toolbox Talk' },
-        ]
+        children: getTrainingMenuItems(usertype, django_user_type, department)
       },
       {
         key: 'incidentmanagement',
@@ -572,10 +594,7 @@ export const getMenuItemsForUser = (
         key: 'training',
         icon: <AuditOutlined />,
         label: 'Training',
-        children: [
-          { key: '/dashboard/inductiontraining', icon: <ReadOutlined />, label: 'Induction Training' },
-          { key: '/dashboard/jobtraining', icon: <ReadOutlined />, label: 'Job Training' },
-        ]
+        children: getTrainingMenuItems(usertype, django_user_type, department)
       },
       {
         key: 'safetyobservation',

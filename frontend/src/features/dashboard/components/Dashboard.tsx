@@ -13,7 +13,7 @@ import {
     ReadOutlined, FileTextOutlined, SafetyOutlined, FormOutlined, PlusOutlined, ClockCircleOutlined,
     BarChartOutlined, SunOutlined, MoonOutlined, DesktopOutlined, AuditOutlined, RocketOutlined,
     ApartmentOutlined, DeleteOutlined, ArrowRightOutlined, CheckCircleOutlined, ExperimentOutlined,
-    EyeOutlined, DatabaseOutlined
+    EyeOutlined, DatabaseOutlined, ExclamationCircleOutlined
 } from '@ant-design/icons';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import axios from 'axios';
@@ -72,6 +72,31 @@ const Dashboard: React.FC = () => {
         department: string;
         userType: string;
     } | null>(null);
+    const [inductionStatus, setInductionStatus] = useState<{
+        hasCompleted: boolean;
+        isEPCSafety: boolean;
+        isMasterAdmin: boolean;
+    } | null>(null);
+
+    // Check induction status on component mount
+    useEffect(() => {
+        const checkInductionStatus = async () => {
+            try {
+                const response = await api.get('/authentication/induction-status/');
+                setInductionStatus(response.data);
+            } catch (error) {
+                console.error('Failed to check induction status:', error);
+            }
+        };
+        
+        checkInductionStatus();
+    }, []);
+
+    // Check if user needs induction training (should have blurred sidebar)
+    const needsInductionTraining = inductionStatus && 
+        !inductionStatus.hasCompleted && 
+        !inductionStatus.isEPCSafety && 
+        !inductionStatus.isMasterAdmin;
 
     const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, sendApprovalNotification } = useNotificationsContext();
     const navigate = useNavigate();
@@ -159,7 +184,8 @@ const Dashboard: React.FC = () => {
             usertype, 
             django_user_type, 
             isApproved, 
-            hasSubmittedDetails
+            hasSubmittedDetails,
+            userDetails?.department
         );
     };
 
@@ -560,8 +586,13 @@ const Dashboard: React.FC = () => {
                         </div>
                     </div>
                 </div>
-                <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minHeight: 0, maxHeight: collapsed && !(isMobile || isTablet) ? 'calc(100vh - 80px)' : 'calc(100vh - 220px)' }}>
-                    <div className={collapsed && !(isMobile || isTablet) ? "p-1" : "p-3"}>
+                <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minHeight: 0, maxHeight: collapsed && !(isMobile || isTablet) ? 'calc(100vh - 80px)' : 'calc(100vh - 220px)', position: 'relative' }}>
+                    <div className={collapsed && !(isMobile || isTablet) ? "p-1" : "p-3"} style={{
+                        filter: needsInductionTraining ? 'blur(3px)' : 'none',
+                        pointerEvents: needsInductionTraining ? 'none' : 'auto',
+                        opacity: needsInductionTraining ? 0.5 : 1,
+                        transition: 'all 0.3s ease'
+                    }}>
                         <Menu
                             mode="inline"
                             selectedKeys={[selectedKey]}
@@ -572,6 +603,26 @@ const Dashboard: React.FC = () => {
                             inlineCollapsed={collapsed && !(isMobile || isTablet)}
                         />
                     </div>
+                    {needsInductionTraining && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            textAlign: 'center',
+                            padding: '20px',
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                            zIndex: 10,
+                            maxWidth: '200px'
+                        }}>
+                            <ExclamationCircleOutlined style={{ fontSize: '24px', color: '#faad14', marginBottom: '8px' }} />
+                            <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.4' }}>
+                                Complete induction training to access menu
+                            </div>
+                        </div>
+                    )}
                 </div>
                 {!(isMobile || isTablet) && !collapsed && (
                     <div style={{ padding: 16, flexShrink: 0 }}>

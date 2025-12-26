@@ -244,10 +244,13 @@ const InductionTrainingAttendance: React.FC<InductionTrainingAttendanceProps> = 
 
   const markAttendance = useCallback((worker: WorkerData, present: boolean) => {
     const newAttendance: InductionTrainingAttendanceData = {
-      id: 0, key: `temp-${worker.id}`,
+      id: 0, 
+      key: `temp-${worker.participant_id || worker.id}`,
       induction_training_id: inductionTraining.id,
-      worker_id: worker.id,
-      worker_name: `${worker.name} ${worker.surname || ''}`,
+      worker_id: worker.participant_id || worker.id,
+      participant_type: worker.participant_type || 'worker',
+      participant_id: worker.participant_id || worker.id,
+      worker_name: `${worker.name} ${worker.surname || ''}`.trim(),
       worker_photo: worker.photo || '',
       attendance_photo: photoSrc || '',
       status: present ? 'present' : 'absent',
@@ -255,7 +258,7 @@ const InductionTrainingAttendance: React.FC<InductionTrainingAttendanceProps> = 
       match_score: matchResult?.score || 0,
     };
     
-    setAttendanceList(prev => [...prev.filter(a => a.worker_id !== worker.id), newAttendance]);
+    setAttendanceList(prev => [...prev.filter(a => (a.participant_id || a.worker_id) !== (worker.participant_id || worker.id)), newAttendance]);
     handleCameraClose();
     message.success(`${worker.name} marked as ${present ? 'present' : 'absent'}`);
   }, [inductionTraining.id, photoSrc, matchResult, handleCameraClose]);
@@ -266,14 +269,26 @@ const InductionTrainingAttendance: React.FC<InductionTrainingAttendanceProps> = 
     
     setSubmitting(true);
     try {
-      await api.post(`/induction/${inductionTraining.id}/attendance/`, {
+      const response = await api.post(`/induction/${inductionTraining.id}/attendance/`, {
         attendance_records: attendanceList,
         evidence_photo: evidencePhotoSrc,
       });
+      
+      // Log response for debugging
+      console.log('Attendance submission response:', response.data);
+      
+      // Check for failed records
+      if (response.data.failed_records && response.data.failed_records.length > 0) {
+        console.warn('Some records failed to save:', response.data.failed_records);
+        message.warning(`${response.data.records_created} records saved successfully. ${response.data.failed_records.length} failed.`);
+      } else {
+        message.success(`Attendance submitted successfully. ${response.data.records_created} records saved.`);
+      }
+      
       await api.put(`/induction/${inductionTraining.id}/`, { ...inductionTraining, status: 'completed' });
-      message.success('Attendance submitted successfully');
       setCompleted(true);
     } catch (error) {
+      console.error('Attendance submission error:', error);
       message.error('Failed to submit attendance');
     } finally {
       setSubmitting(false);
@@ -281,8 +296,10 @@ const InductionTrainingAttendance: React.FC<InductionTrainingAttendanceProps> = 
   }, [attendanceList, evidencePhotoSrc, inductionTraining]);
 
   // --- Helper Functions for Rendering ---
-  const isWorkerMarked = useCallback((workerId: number) => attendanceList.some(a => a.worker_id === workerId), [attendanceList]);
-  const getAttendanceStatus = useCallback((workerId: number) => attendanceList.find(a => a.worker_id === workerId)?.status, [attendanceList]);
+  const isWorkerMarked = useCallback((workerId: number) => 
+    attendanceList.some(a => (a.participant_id || a.worker_id) === workerId), [attendanceList]);
+  const getAttendanceStatus = useCallback((workerId: number) => 
+    attendanceList.find(a => (a.participant_id || a.worker_id) === workerId)?.status, [attendanceList]);
 
   const filteredWorkers = workers.filter(worker => {
     const fullName = `${worker.name} ${worker.surname || ''}`.toLowerCase();
@@ -349,8 +366,11 @@ const InductionTrainingAttendance: React.FC<InductionTrainingAttendanceProps> = 
               >
                 <List.Item.Meta
                   avatar={<Avatar src={worker.photo} icon={<UserOutlined />} size={48} />}
-                  title={`${worker.name} ${worker.surname || ''}`}
-                  description={<Text type="secondary">ID: {worker.worker_id} • {worker.designation}</Text>}
+                  title={<>
+                    {`${worker.name} ${worker.surname || ''}`}
+                    {worker.participant_type === 'user' && <Tag color="blue" style={{marginLeft: 8}}>User</Tag>}
+                  </>}
+                  description={<Text type="secondary">ID: {worker.worker_id || worker.employee_id} • {worker.designation}</Text>}
                 />
               </List.Item>
             );

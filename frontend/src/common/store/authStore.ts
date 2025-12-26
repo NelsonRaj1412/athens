@@ -15,6 +15,7 @@ interface AuthState {
   lastRefreshTime: number | null; // Track when token was last refreshed
   tokenExpiry: string | null; // Track when token expires
   grade: string | null; // Add grade property (A, B, C)
+  department: string | null; // Add department property
   isApproved: boolean; // Track if user is approved for full access
   hasSubmittedDetails: boolean; // Track if user has submitted their details
   setToken: (
@@ -27,6 +28,7 @@ interface AuthState {
     userId: string | number | null,
     isPasswordResetRequired: boolean,
     grade: string | null, // Add grade parameter
+    department: string | null, // Add department parameter
     isApproved?: boolean,
     hasSubmittedDetails?: boolean
   ) => void;
@@ -40,6 +42,7 @@ interface AuthState {
   setIsPasswordResetRequired: (value: boolean) => void;
   setLastRefreshTime: (time: number) => void; // Set last refresh time
   setGrade: (grade: string | null) => void; // Add setter for grade
+  setDepartment: (department: string | null) => void; // Add setter for department
   setApprovalStatus: (isApproved: boolean, hasSubmittedDetails: boolean) => void;
   clearToken: () => void;
   isAuthenticated: () => boolean;
@@ -68,6 +71,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
   lastRefreshTime: getStoredItem('lastRefreshTime') ? parseInt(getStoredItem('lastRefreshTime')!, 10) : null,
   tokenExpiry: getStoredItem('tokenExpiry'),
   grade: getStoredItem('grade'), // Initialize grade from localStorage
+  department: getStoredItem('department'), // Initialize department from localStorage
   isApproved: getStoredItem('isApproved') === 'true',
   hasSubmittedDetails: getStoredItem('hasSubmittedDetails') === 'true',
   setToken: (
@@ -80,6 +84,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
     userId: string | number | null,
     isPasswordResetRequired: boolean,
     grade: string | null, // Add grade parameter
+    department: string | null, // Add department parameter
     isApproved?: boolean,
     hasSubmittedDetails?: boolean
   ) => {
@@ -130,6 +135,11 @@ const useAuthStore = create<AuthState>((set, get) => ({
       } else {
         localStorage.removeItem('grade');
       }
+      if (department) {
+        localStorage.setItem('department', department);
+      } else {
+        localStorage.removeItem('department');
+      }
       if (isApproved !== undefined) {
         localStorage.setItem('isApproved', isApproved.toString());
       }
@@ -148,6 +158,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
       isPasswordResetRequired,
       tokenExpiry: expiryDate,
       grade,
+      department,
       isApproved: isApproved ?? get().isApproved,
       hasSubmittedDetails: hasSubmittedDetails ?? get().hasSubmittedDetails,
     });
@@ -227,6 +238,16 @@ const useAuthStore = create<AuthState>((set, get) => ({
     }
     set({ grade });
   },
+  setDepartment: (department: string | null) => {
+    if (typeof window !== 'undefined') {
+      if (department) {
+        localStorage.setItem('department', department);
+      } else {
+        localStorage.removeItem('department');
+      }
+    }
+    set({ department });
+  },
   setApprovalStatus: (isApproved: boolean, hasSubmittedDetails: boolean) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('isApproved', isApproved.toString());
@@ -247,6 +268,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
       localStorage.removeItem('lastRefreshTime');
       localStorage.removeItem('tokenExpiry');
       localStorage.removeItem('grade'); // Clear grade from localStorage
+      localStorage.removeItem('department'); // Clear department from localStorage
       localStorage.removeItem('isApproved');
       localStorage.removeItem('hasSubmittedDetails');
     }
@@ -262,6 +284,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
       lastRefreshTime: null,
       tokenExpiry: null,
       grade: null, // Clear grade from state
+      department: null, // Clear department from state
       isApproved: false,
       hasSubmittedDetails: false,
     });

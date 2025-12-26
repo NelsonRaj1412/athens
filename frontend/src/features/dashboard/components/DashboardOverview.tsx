@@ -398,10 +398,39 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 const DashboardOverview: React.FC = () => {
   const { effectiveTheme } = useTheme();
   const navigate = useNavigate();
+  const { usertype, django_user_type, department } = useAuthStore();
   const [timeRange, setTimeRange] = useState('week');
   const [dashboardData, setDashboardData] = useState<DashboardData>(MOCK_DASHBOARD_DATA);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [inductionStatus, setInductionStatus] = useState<{
+    hasCompleted: boolean;
+    isEPCSafety: boolean;
+    isMasterAdmin: boolean;
+  } | null>(null);
+
+  // Check induction status on component mount
+  useEffect(() => {
+    const checkInductionStatus = async () => {
+      try {
+        const response = await api.get('/authentication/induction-status/');
+        setInductionStatus(response.data);
+      } catch (error) {
+        console.error('Failed to check induction status:', error);
+      }
+    };
+    
+    checkInductionStatus();
+  }, []);
+
+  // Check if user needs induction training
+  const needsInductionTraining = inductionStatus && 
+    !inductionStatus.hasCompleted && 
+    !inductionStatus.isEPCSafety && 
+    !inductionStatus.isMasterAdmin;
+
+  // Check if user is EPC Safety (restricted to induction training only)
+  const isEPCSafetyUser = inductionStatus?.isEPCSafety;
 
   // Handle time range change with mock data simulation
   const handleTimeRangeChange = (value: string) => {
@@ -448,6 +477,33 @@ const DashboardOverview: React.FC = () => {
 
   return (
     <div className="space-y-6" style={{ paddingTop: 80 }}>
+      {/* Induction Training Requirement Banner */}
+      {needsInductionTraining && (
+        <Alert
+          message="Induction Training Required"
+          description={
+            <div className="space-y-3">
+              <p className="text-red-800 font-medium">You must complete induction training before accessing any operational modules. Please contact the EPC Safety Department to schedule your induction training session.</p>
+              <div className="flex items-center gap-2 bg-red-100 p-2 rounded">
+                <WarningOutlined className="text-red-600" />
+                <Text strong className="text-red-800">All system features are restricted until training completion.</Text>
+              </div>
+            </div>
+          }
+          type="error"
+          showIcon
+          banner
+          className="mb-6 border-l-4 border-l-red-600 bg-red-50 border-red-200"
+          style={{
+            backgroundColor: '#fef2f2',
+            borderColor: '#fecaca',
+            color: '#991b1b'
+          }}
+        />
+      )}
+
+
+
       {/* Header section */}
       <div className="flex flex-wrap justify-between items-center gap-4">
         <Title level={3} className="!mb-0 !text-color-text-base">Dashboard Overview</Title>
@@ -780,67 +836,83 @@ const DashboardOverview: React.FC = () => {
             <Card>
                 <Title level={5} className="!mb-4 !text-color-text-base">Quick Actions</Title>
                 <div className="space-y-3">
-                    <Button 
+                    {/* Show restricted message for users who need induction training */}
+                    {needsInductionTraining ? (
+                      <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
+                        <ExclamationCircleOutlined className="text-2xl text-orange-500 mb-2" />
+                        <Text className="block text-sm text-orange-700 mb-2">Actions Restricted</Text>
+                        <Text className="text-xs text-orange-600">Complete induction training to access system features</Text>
+                      </div>
+                    ) : isEPCSafetyUser ? (
+                      <Button 
                         type="primary" 
                         block 
-                        icon={<PlusOutlined />}
-                        onClick={() => {
-                          // Navigate to PTW
-                          try {
-                            navigate('/dashboard/ptw');
-                          } catch (error) {
-                            console.error('Navigation error:', error);
-                            window.location.href = '/dashboard/ptw';
-                          }
-                        }}
-                    >
-                        New Permit
-                    </Button>
-                    <Button 
-                        block 
-                        icon={<SafetyOutlined />}
-                        onClick={() => {
-                          // Navigate to safety observation
-                          try {
-                            navigate('/dashboard/safetyobservation');
-                          } catch (error) {
-                            console.error('Navigation error:', error);
-                            window.location.href = '/dashboard/safetyobservation';
-                          }
-                        }}
-                    >
-                        Safety Report
-                    </Button>
-                    <Button 
-                        block 
-                        icon={<AlertOutlined />}
-                        onClick={() => {
-                          // Navigate to incident management
-                          try {
-                            navigate('/dashboard/incidentmanagement');
-                          } catch (error) {
-                            console.error('Navigation error:', error);
-                            window.location.href = '/dashboard/incidentmanagement';
-                          }
-                        }}
-                    >
-                        Incident Report
-                    </Button>
-                    <Button 
-                        block 
-                        icon={<BarChartOutlined />}
-                        onClick={() => {
-                          // Navigate to analytics
-                          try {
-                            navigate('/dashboard');
-                          } catch (error) {
-                            console.error('Navigation error:', error);
-                            window.location.href = '/dashboard';
-                          }
-                        }}
-                    >
-                        View Analytics
-                    </Button>
+                        icon={<UserOutlined />}
+                        onClick={() => navigate('/dashboard/inductiontraining')}
+                      >
+                        Induction Training
+                      </Button>
+                    ) : (
+                      <>
+                        <Button 
+                            type="primary" 
+                            block 
+                            icon={<PlusOutlined />}
+                            onClick={() => {
+                              try {
+                                navigate('/dashboard/ptw');
+                              } catch (error) {
+                                console.error('Navigation error:', error);
+                                window.location.href = '/dashboard/ptw';
+                              }
+                            }}
+                        >
+                            New Permit
+                        </Button>
+                        <Button 
+                            block 
+                            icon={<SafetyOutlined />}
+                            onClick={() => {
+                              try {
+                                navigate('/dashboard/safetyobservation');
+                              } catch (error) {
+                                console.error('Navigation error:', error);
+                                window.location.href = '/dashboard/safetyobservation';
+                              }
+                            }}
+                        >
+                            Safety Report
+                        </Button>
+                        <Button 
+                            block 
+                            icon={<AlertOutlined />}
+                            onClick={() => {
+                              try {
+                                navigate('/dashboard/incidentmanagement');
+                              } catch (error) {
+                                console.error('Navigation error:', error);
+                                window.location.href = '/dashboard/incidentmanagement';
+                              }
+                            }}
+                        >
+                            Incident Report
+                        </Button>
+                        <Button 
+                            block 
+                            icon={<BarChartOutlined />}
+                            onClick={() => {
+                              try {
+                                navigate('/dashboard');
+                              } catch (error) {
+                                console.error('Navigation error:', error);
+                                window.location.href = '/dashboard';
+                              }
+                            }}
+                        >
+                            View Analytics
+                        </Button>
+                      </>
+                    )}
                 </div>
             </Card>
 

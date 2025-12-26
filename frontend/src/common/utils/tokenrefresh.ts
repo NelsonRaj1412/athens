@@ -132,7 +132,8 @@ const refreshToken = async (): Promise<string | null> => {
         authState.django_user_type,
         authState.userId,
         authState.isPasswordResetRequired,
-        authState.grade
+        authState.grade,
+        authState.department
       );
 
       
@@ -211,7 +212,8 @@ export const testTokenRefresh = async (): Promise<void> => {
         authState.django_user_type,
         authState.userId,
         authState.isPasswordResetRequired,
-        authState.grade
+        authState.grade,
+        authState.department
       );
     }
     

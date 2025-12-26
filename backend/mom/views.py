@@ -36,7 +36,15 @@ class MomCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        mom = serializer.save(scheduled_by=self.request.user)
+        # PROJECT ISOLATION: Ensure user has a project
+        if not self.request.user.project:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError("User must be assigned to a project to create meetings.")
+        
+        mom = serializer.save(
+            scheduled_by=self.request.user,
+            project=self.request.user.project
+        )
         
         # Send notifications to participants via backend
         for participant in mom.participants.all():
@@ -73,8 +81,19 @@ class MomListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        """PROJECT ISOLATION: Filter by user's project"""
         user = self.request.user
-        queryset = Mom.objects.filter(scheduled_by=user)
+        
+        # Master admin sees all data
+        if user.is_superuser or (hasattr(user, 'admin_type') and user.admin_type == 'master'):
+            queryset = Mom.objects.all()
+        else:
+            # PROJECT ISOLATION: Filter by user's project
+            if not user.project:
+                return Mom.objects.none()
+            
+            queryset = Mom.objects.filter(project=user.project)
+        
         department = self.request.query_params.get('department')
         if department:
             queryset = queryset.filter(department=department)
@@ -430,14 +449,26 @@ class UsersByDepartmentListView(ListAPIView):
     permission_classes = [IsAdminUser]
 
     def get_queryset(self):
+        """PROJECT ISOLATION: Only show users from the same project"""
+        user = self.request.user
+        
+        # PROJECT ISOLATION: Filter by user's project
+        if not user.project:
+            return CustomUser.objects.none()
+        
         department_name = self.request.query_params.get('department_name')
-        queryset = CustomUser.objects.filter(admin_type__in=['clientuser', 'contractoruser', 'epcuser'])
+        queryset = CustomUser.objects.filter(
+            admin_type__in=['clientuser', 'contractoruser', 'epcuser'],
+            project=user.project  # Same project only
+        )
+        
         if department_name:
             queryset = queryset.filter(department=department_name)
+        
         # Exclude the logged-in user from the participant list
-        user = self.request.user
         if user.is_authenticated:
             queryset = queryset.exclude(id=user.id)
+        
         return queryset
 
 # Removed NotificationSendView - now using WebSocket notifications via signals

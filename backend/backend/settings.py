@@ -120,6 +120,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     # 'django.middleware.csrf.CsrfViewMiddleware',  # Disabled for API
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'authentication.middleware.ProjectIsolationMiddleware',  # Project isolation middleware
+    'authentication.middleware.SecurityAuditMiddleware',  # Security audit middleware
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
