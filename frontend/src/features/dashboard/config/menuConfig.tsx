@@ -374,6 +374,7 @@ export const getMenuItemsForUser = (
   if (usertype === 'master') {
     return [
       { key: '/dashboard', icon: <DashboardOutlined />, label: 'Overview' },
+      { key: '/dashboard/analytics', icon: <BarChartOutlined />, label: 'Analytics' },
       { key: '/dashboard/projects', icon: <ProjectOutlined />, label: 'Projects' },
       { key: '/dashboard/adminusers', icon: <TeamOutlined />, label: 'Admin Users' },
       {
@@ -393,6 +394,7 @@ export const getMenuItemsForUser = (
   if (django_user_type === 'adminuser') {
     return [
       { key: '/dashboard', icon: <DashboardOutlined />, label: 'Overview' },
+      { key: '/dashboard/analytics', icon: <BarChartOutlined />, label: 'Analytics' },
       { key: '/dashboard/attendance', icon: <ClockCircleOutlined />, label: 'Mark Attendance' },
       { key: '/dashboard/chatbox', icon: <MessageOutlined />, label: 'Chat Box' },
       { key: '/dashboard/voice-translator', icon: <SoundOutlined />, label: 'Voice Translator' },
@@ -496,6 +498,7 @@ export const getMenuItemsForUser = (
   if (['client', 'epc'].includes(usertype ?? '') || usertype?.includes('contractor')) {
     const baseMenuItems: MenuItem[] = [
       { key: '/dashboard', icon: <DashboardOutlined />, label: 'Overview' },
+      { key: '/dashboard/analytics', icon: <BarChartOutlined />, label: 'Analytics' },
       { key: '/dashboard/attendance', icon: <ClockCircleOutlined />, label: 'Mark Attendance' },
       { key: '/dashboard/voice-translator', icon: <SoundOutlined />, label: 'Voice Translator' },
       { key: '/dashboard/users', icon: <UserOutlined />, label: 'Users' },
@@ -589,6 +592,7 @@ export const getMenuItemsForUser = (
   if (['clientuser', 'epcuser', 'contractoruser'].includes(django_user_type ?? '')) {
     return [
       { key: '/dashboard', icon: <DashboardOutlined />, label: 'Overview' },
+      { key: '/dashboard/analytics', icon: <BarChartOutlined />, label: 'Analytics' },
       { key: '/dashboard/voice-translator', icon: <SoundOutlined />, label: 'Voice Translator' },
       {
         key: 'training',

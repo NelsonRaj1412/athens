@@ -8,9 +8,9 @@ from django.shortcuts import get_object_or_404
 from .models import Worker
 from .serializers import WorkerSerializer, WorkerDetailSerializer
 from .permissions import CanManageWorkers
-# from permissions.decorators import require_permission  # Removed to avoid authentication issues
+from authentication.project_isolation import ProjectIsolationMixin, apply_project_isolation
 
-class WorkerViewSet(viewsets.ModelViewSet):
+class WorkerViewSet(ProjectIsolationMixin, viewsets.ModelViewSet):
     """
     API endpoint for managing workers.
     """
@@ -41,12 +41,8 @@ class WorkerViewSet(viewsets.ModelViewSet):
         if user.is_superuser:
             return Worker.objects.all()
         
-        # PROJECT ISOLATION: Ensure user has a project
-        if not user.project:
-            return Worker.objects.none()
-        
-        # PROJECT ISOLATION: Return only workers from the same project
-        return Worker.objects.filter(project=user.project)
+        # Apply project isolation
+        return apply_project_isolation(Worker.objects.all(), user)
     
     def perform_create(self, serializer):
         """

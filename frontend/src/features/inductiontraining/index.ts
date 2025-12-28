@@ -3,4 +3,5 @@ export { default as InductionTrainingView } from './components/InductionTraining
 export { default as InductionTrainingEdit } from './components/InductionTrainingEdit';
 export { default as InductionTrainingCreation } from './components/InductionTrainingCreation';
 export { default as InductionTrainingAttendance } from './components/InductionTrainingAttendance';
+export { default as InductionTrainedPersonnelList } from './components/InductionTrainedPersonnelList';
 export * from './types';

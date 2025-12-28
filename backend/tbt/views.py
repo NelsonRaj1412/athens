@@ -48,11 +48,15 @@ class ToolboxTalkViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Filter toolbox talks based on user's project
+        Filter toolbox talks based on user's project and permissions
         """
         user = self.request.user
         if not user.is_authenticated:
             return ToolboxTalk.objects.none()
+            
+        # For superusers or admin users, show all TBTs
+        if user.is_superuser or getattr(user, 'user_type', '') in ['adminuser', 'projectadmin']:
+            return ToolboxTalk.objects.all()
             
         user_project = getattr(user, 'project', None)
         
@@ -141,55 +145,123 @@ def user_search(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def deployed_workers(request):
+def trained_personnel(request):
     """
-    Get all workers with 'deployed' employment status for toolbox talk attendance.
-    Only deployed workers can attend toolbox talks.
+    Get all induction-trained personnel (both workers and users) for toolbox talk attendance.
+    This includes both workers and admin users who have completed induction training.
     """
     try:
+        from inductiontraining.models import InductionAttendance, InductionTraining
         from worker.models import Worker
         from worker.serializers import WorkerSerializer
+        from authentication.serializers import AdminUserCommonSerializer
 
-        # Get ALL workers with 'deployed' status across all users and projects
-        deployed_workers = Worker.objects.filter(
-            employment_status='deployed'
-        ).select_related('created_by', 'project').order_by('name', 'surname')
+        # PROJECT ISOLATION: Ensure user has a project
+        if not request.user.project:
+            return Response({
+                'error': 'Access denied',
+                'message': 'User must be assigned to a project to access this data.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get attendance records from completed inductions in current project
+        project_inductions = InductionTraining.objects.filter(
+            project=request.user.project,
+            status='completed'
+        )
+        
+        trained_attendance = InductionAttendance.objects.filter(
+            induction__in=project_inductions,
+            status='present'
+        ).select_related('induction').order_by('-induction__date', 'worker_name')
 
+        # Separate workers and users
+        worker_records = trained_attendance.filter(participant_type='worker', worker_id__gt=0)
+        user_records = trained_attendance.filter(participant_type='user', worker_id__lt=0)
 
-        # Use the worker serializer to format the response consistently
-        # Include request context so photo URLs are properly built
-        serializer = WorkerSerializer(deployed_workers, many=True, context={'request': request})
+        # Get unique worker IDs and user IDs
+        trained_worker_ids = list(worker_records.values_list('worker_id', flat=True).distinct())
+        trained_user_ids = [-id for id in user_records.values_list('worker_id', flat=True).distinct()]
 
-        # Fix photo URLs to be absolute
-        serialized_data = serializer.data
-        for worker_data in serialized_data:
-            if worker_data.get('photo') and worker_data['photo'].startswith('/media/'):
-                absolute_url = request.build_absolute_uri(worker_data['photo'])
-                worker_data['photo'] = absolute_url
-            elif worker_data.get('photo') and not worker_data['photo'].startswith('http'):
-                absolute_url = request.build_absolute_uri(worker_data['photo'])
-                worker_data['photo'] = absolute_url
+        # Get worker details
+        trained_workers = Worker.objects.filter(
+            id__in=trained_worker_ids,
+            project=request.user.project
+        ).select_related('project', 'created_by')
 
-        # Add some statistics for better context
-        total_workers = Worker.objects.count()
-        initiated_workers = Worker.objects.filter(employment_status='initiated').count()
+        # Get user details
+        trained_users = User.objects.filter(
+            id__in=trained_user_ids,
+            project=request.user.project
+        ).select_related('project')
 
-        response_data = {
-            'count': deployed_workers.count(),
-            'workers': serialized_data,
-            'statistics': {
-                'total_workers': total_workers,
-                'deployed_workers': deployed_workers.count(),
-                'initiated_workers': initiated_workers,
-                'message': f'Showing {deployed_workers.count()} workers eligible for toolbox talks'
-            }
-        }
+        # Prepare worker data
+        workers_data = []
+        for worker in trained_workers:
+            worker_serializer = WorkerSerializer(worker, context={'request': request})
+            worker_data = worker_serializer.data
+            worker_data['participant_type'] = 'worker'
+            worker_data['participant_id'] = worker.id
+            
+            # Fix photo URLs
+            if worker_data.get('photo') and not worker_data['photo'].startswith('http'):
+                worker_data['photo'] = request.build_absolute_uri(worker_data['photo'])
+            
+            workers_data.append(worker_data)
 
-        return Response(response_data)
+        # Prepare user data
+        users_data = []
+        for user in trained_users:
+            try:
+                from authentication.serializers import AdminUserCommonSerializer
+                user_serializer = AdminUserCommonSerializer(user, context={'request': request})
+                user_data = user_serializer.data
+            except:
+                # Fallback if AdminUserCommonSerializer doesn't exist
+                user_data = {
+                    'id': user.id,
+                    'name': user.name or '',
+                    'surname': user.surname or '',
+                    'email': user.email or '',
+                    'username': user.username,
+                    'phone_number': getattr(user, 'phone_number', ''),
+                    'department': getattr(user, 'department', ''),
+                    'designation': getattr(user, 'designation', ''),
+                }
+            
+            user_data['participant_type'] = 'user'
+            user_data['participant_id'] = user.id
+            
+            # Add photo from user_detail if available
+            try:
+                if hasattr(user, 'user_detail') and user.user_detail and user.user_detail.photo:
+                    photo_url = user.user_detail.photo.url
+                    if not photo_url.startswith('http'):
+                        user_data['photo'] = request.build_absolute_uri(photo_url)
+                    else:
+                        user_data['photo'] = photo_url
+            except:
+                user_data['photo'] = None
+            
+            users_data.append(user_data)
+
+        # Combine all trained personnel
+        all_trained = workers_data + users_data
+
+        return Response({
+            'count': len(all_trained),
+            'workers': workers_data,
+            'users': users_data,
+            'all_participants': all_trained,
+            'workers_count': len(workers_data),
+            'users_count': len(users_data),
+            'message': f'Found {len(all_trained)} trained personnel eligible for toolbox talks'
+        })
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return Response(
-            {"error": f"Failed to fetch deployed workers: {str(e)}"},
+            {"error": f"Failed to fetch trained personnel: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 

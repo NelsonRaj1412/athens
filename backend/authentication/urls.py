@@ -10,6 +10,7 @@ from . import views_admin_delete
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import CustomTokenObtainPairView
 from .views_attendance import check_in, check_out, get_attendance_status
+from .face_comparison_api import compare_faces_api
 from .views import CurrentAdminDetailView, AdminDetailUpdateView, AdminDetailUpdateByMasterView
 from .secure_views import SecureCompatibleLoginAPIView
 from .views_dashboard import dashboard_overview
@@ -103,6 +104,7 @@ urlpatterns = [
     path('api/attendance/check-in/', check_in, name='check-in'),
     path('api/attendance/check-out/', check_out, name='check-out'),
     path('api/attendance/status/<int:project_id>/', get_attendance_status, name='attendance-status'),
+    path('compare-faces/', compare_faces_api, name='compare-faces'),
     path('admin/me/', CurrentAdminDetailView.as_view(), name='current-admin-detail'),
     path('user/project/', views.CurrentUserProjectView.as_view(), name='current-user-project'),
 

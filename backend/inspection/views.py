@@ -1,13 +1,16 @@
 from rest_framework import viewsets, status
 from permissions.decorators import require_permission
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.utils import timezone
+from django.contrib.auth import get_user_model
 from .models import Inspection, InspectionItem, InspectionReport
 from .serializers import InspectionSerializer, InspectionItemSerializer, InspectionReportSerializer
+
+User = get_user_model()
 
 class InspectionViewSet(viewsets.ModelViewSet):
     serializer_class = InspectionSerializer
@@ -137,3 +140,41 @@ class InspectionReportViewSet(viewsets.ReadOnlyModelViewSet):
         if user_project:
             return InspectionReport.objects.filter(inspection__project=user_project)
         return InspectionReport.objects.none()
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def inspection_users(request):
+    """
+    Get users from the same project for witnessed_by dropdown
+    """
+    user = request.user
+    
+    # PROJECT ISOLATION: Only return users from the same project
+    if not user.project:
+        return Response({
+            'error': 'Project access required',
+            'message': 'User must be assigned to a project to access project users.'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    # Get users from the same project
+    project_users = User.objects.filter(
+        project=user.project,
+        is_active=True
+    ).exclude(
+        admin_type='master'  # Exclude master admins
+    ).values('id', 'username', 'name', 'surname')
+    
+    # Format for dropdown
+    users_list = []
+    for user_data in project_users:
+        display_name = f"{user_data['name']} {user_data['surname']}".strip() if user_data['name'] else user_data['username']
+        users_list.append({
+            'id': user_data['id'],
+            'username': user_data['username'],
+            'display_name': display_name
+        })
+    
+    return Response({
+        'users': users_list,
+        'count': len(users_list)
+    })

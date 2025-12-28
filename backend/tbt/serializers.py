@@ -59,9 +59,16 @@ class ToolboxTalkSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
         
     def update(self, instance, validated_data):
-        # Only update the fields that are provided
+        # Ensure all fields are properly updated and persisted
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+        
+        # Ensure project is maintained during updates
+        if not instance.project and hasattr(self.context.get('request'), 'user'):
+            user = self.context['request'].user
+            if user.project:
+                instance.project = user.project
+        
         instance.save()
         return instance
         
@@ -71,3 +78,17 @@ class ToolboxTalkSerializer(serializers.ModelSerializer):
             # This is an update operation, not a create
             pass  # created_by is not required for updates
         return data
+    
+    def to_representation(self, instance):
+        """Ensure all fields are properly serialized for frontend"""
+        representation = super().to_representation(instance)
+        
+        # Ensure duration is always included
+        if 'duration' not in representation or representation['duration'] is None:
+            representation['duration'] = instance.duration or 30
+        
+        # Ensure duration_unit is always included
+        if 'duration_unit' not in representation or representation['duration_unit'] is None:
+            representation['duration_unit'] = instance.duration_unit or 'minutes'
+            
+        return representation

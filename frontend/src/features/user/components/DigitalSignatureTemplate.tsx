@@ -102,11 +102,13 @@ const DigitalSignatureTemplate: React.FC<DigitalSignatureTemplateProps> = ({
   const regenerateTemplate = async () => {
     setCreating(true);
     try {
-      const response = await api.put('/authentication/signature/template/regenerate/');
+      const response = await api.put('/authentication/signature/template/regenerate/', {
+        logo_opacity: 0.5  // Set to 50% opacity
+      });
       if (response.data.success) {
         message.success('Signature template regenerated successfully!');
-        setTemplateUrl(response.data.template_url);
-        await fetchTemplateInfo(); // Refresh info
+        // Force refresh template info to get new URL
+        await fetchTemplateInfo();
         onTemplateCreated?.();
       } else {
         message.error(response.data.error || 'Failed to regenerate template');
@@ -253,7 +255,6 @@ const DigitalSignatureTemplate: React.FC<DigitalSignatureTemplateProps> = ({
             icon={<ReloadOutlined />}
             loading={creating}
             onClick={regenerateTemplate}
-            disabled={disabled || !templateInfo.can_create_template}
           >
             Regenerate Template
           </Button>

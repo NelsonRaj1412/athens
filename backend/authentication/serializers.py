@@ -5,6 +5,7 @@
 from rest_framework import serializers
 from .models import CustomUser, Project, UserDetail, CompanyDetail, AdminDetail
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .validators import InputValidator
 import random
 import string
 

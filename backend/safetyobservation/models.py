@@ -86,6 +86,7 @@ class SafetyObservation(models.Model):
     # Status and Additional Info
     observationStatus = models.CharField(max_length=50, choices=STATUS_CHOICES, default='open')
     remarks = models.TextField(max_length=1000, blank=True)
+    escalation_level = models.IntegerField(default=1, validators=[MinValueValidator(1), MaxValueValidator(5)])
 
     # Environmental Fields
     is_environmental = models.BooleanField(default=False)
@@ -122,6 +123,18 @@ class SafetyObservation(models.Model):
         # Auto-calculate risk score
         if self.severity and self.likelihood:
             self.riskScore = self.severity * self.likelihood
+        
+        # Auto-escalation for high-risk observations
+        if self.riskScore >= 12 and not hasattr(self, '_skip_escalation'):
+            old_escalation = getattr(self, 'escalation_level', 1)
+            if old_escalation <= 1:
+                self.escalation_level = 2
+                
+                # Restrict creator access on escalation
+                if self.pk and old_escalation <= 1 and self.escalation_level > 1:
+                    from permissions.escalation import restrict_creator_access_on_escalation
+                    restrict_creator_access_on_escalation(self)
+        
         super().save(*args, **kwargs)
 
     @property

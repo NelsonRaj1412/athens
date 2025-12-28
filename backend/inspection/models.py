@@ -42,6 +42,7 @@ class Inspection(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
     inspector = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='inspections_assigned')
+    witnessed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='inspections_witnessed', help_text="User who witnessed the inspection")
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='inspections_created')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

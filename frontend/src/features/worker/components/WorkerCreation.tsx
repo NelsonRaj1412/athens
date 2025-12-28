@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Form, Input, Button, Select, DatePicker, App, Typography, Row, Col, Checkbox, Modal, Upload, Space, Spin } from 'antd';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Form, Input, Button, Select, DatePicker, App, Typography, Row, Col, Checkbox, Upload, Space, Spin } from 'antd';
 import { CameraOutlined, UserOutlined, IdcardOutlined, HomeOutlined, SolutionOutlined, UploadOutlined } from '@ant-design/icons';
 import type { RcFile, UploadChangeParam } from 'antd/es/upload';
 import styled from 'styled-components';
 import api from '@common/utils/axiosetup';
 import moment from 'moment';
-import Webcam from 'react-webcam';
+import FaceCapture from '../../../components/FaceCapture';
 import { DEPARTMENTS, DESIGNATIONS_BY_DEPARTMENT } from '../constants';
 
 const { Title } = Typography;
@@ -121,15 +121,12 @@ const WorkerCreation: React.FC<WorkerCreationProps> = ({ onFinish }) => {
   const [loading, setLoading] = useState(false);
   const [sameAsPresent, setSameAsPresent] = useState(false);
   const [showOtherEducation, setShowOtherEducation] = useState(false);
-  const [cameraOpen, setCameraOpen] = useState(false);
+  const [faceCapture, setFaceCapture] = useState<{ visible: boolean }>({ visible: false });
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<RcFile | null>(null);
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const [availableDesignations, setAvailableDesignations] = useState<Array<{value: string, label: string}>>([]);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [cameraLoading, setCameraLoading] = useState(false);
   const [aadhaarValidating, setAadhaarValidating] = useState(false);
-  const webcamRef = useRef<Webcam>(null);
 
   const handleSameAddressChange = useCallback((e: any) => {
     const isChecked = e.target.checked;
@@ -138,39 +135,6 @@ const WorkerCreation: React.FC<WorkerCreationProps> = ({ onFinish }) => {
   }, [form]);
 
   const handleEducationChange = useCallback((value: string) => setShowOtherEducation(value === 'Other'), []);
-
-  const handleCameraOpen = useCallback(async () => {
-    setUploadedFile(null);
-    setCameraError(null);
-    setCameraLoading(true);
-
-    // Check if browser supports getUserMedia
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setCameraError('Camera not supported by this browser');
-      setCameraLoading(false);
-      return;
-    }
-
-    try {
-      // Request camera permission explicitly
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user" }
-      });
-      // Stop the stream immediately as Webcam component will handle it
-      stream.getTracks().forEach(track => track.stop());
-      setCameraLoading(false);
-      setCameraOpen(true);
-    } catch (error) {
-      setCameraError(`Camera access denied: ${error.message}`);
-      setCameraLoading(false);
-    }
-  }, []);
-
-  const handleCameraClose = useCallback(() => {
-    setCameraOpen(false);
-    setCameraError(null);
-    setCameraLoading(false);
-  }, []);
 
   // Function to check for duplicate Aadhaar number across ALL workers in the database
   const checkDuplicateAadhaar = useCallback(async (aadhaarNumber: string, showLoading: boolean = false) => {
@@ -181,66 +145,24 @@ const WorkerCreation: React.FC<WorkerCreationProps> = ({ onFinish }) => {
     try {
       if (showLoading) setAadhaarValidating(true);
 
-      // Use the dedicated duplicate check API endpoint that checks across ALL workers
       const response = await api.get('/worker/check_duplicate_aadhaar/', {
-        params: {
-          aadhaar: aadhaarNumber
-        }
+        params: { aadhaar: aadhaarNumber }
       });
 
-
       if (response.data.isDuplicate) {
-        const existingWorker = response.data.existingWorker;
-
         return {
           isDuplicate: true,
-          existingWorker: existingWorker
+          existingWorker: response.data.existingWorker
         };
       }
 
       return { isDuplicate: false };
     } catch (error: any) {
-
-      // If it's a 400 error, it might be validation related
-      if (error.response?.status === 400) {
-        // Still allow submission - backend will provide final validation
-      }
-
-      return { isDuplicate: false }; // Allow submission if check fails - backend will catch duplicates
+      return { isDuplicate: false };
     } finally {
       if (showLoading) setAadhaarValidating(false);
     }
   }, []);
-
-  const handleCameraReady = useCallback(() => {
-    setCameraLoading(false);
-    setCameraError(null);
-  }, []);
-
-  const handleCameraError = useCallback((error: string | DOMException) => {
-    setCameraLoading(false);
-    if (typeof error === 'string') {
-      setCameraError(error);
-    } else {
-      setCameraError('Unable to access camera. Please check permissions and try again.');
-    }
-  }, []);
-
-  const handleDepartmentChange = useCallback((value: string) => {
-    setSelectedDepartment(value);
-    const designations = DESIGNATIONS_BY_DEPARTMENT[value as keyof typeof DESIGNATIONS_BY_DEPARTMENT] || [];
-    setAvailableDesignations(designations);
-    // Clear designation when department changes
-    form.setFieldsValue({ designation: undefined });
-  }, [form]);
-
-  const capturePhoto = useCallback(() => {
-    if (webcamRef.current) {
-      const imageSrc = webcamRef.current.getScreenshot();
-      setPhotoSrc(imageSrc); setUploadedFile(null); setCameraOpen(false);
-      form.validateFields(['photo']);
-    }
-  }, [form]);
 
   const handleUploadChange = useCallback((info: UploadChangeParam) => {
     const file = info.fileList[0]?.originFileObj || null;
@@ -578,7 +500,7 @@ const handleNumericInputChange = useCallback((fieldName: string) => (e: React.Ch
                 <PhotoSection>{previewSrc && <PhotoPreview src={previewSrc} alt="Worker" />}
                     <Space>
                         <Upload accept="image/*" maxCount={1} showUploadList={false} beforeUpload={() => false} onChange={handleUploadChange}><Button icon={<UploadOutlined />}>Upload from Device</Button></Upload>
-                        <Button icon={<CameraOutlined />} onClick={handleCameraOpen}>Use Camera</Button>
+                        <Button icon={<CameraOutlined />} onClick={() => setFaceCapture({ visible: true })}>Use Camera</Button>
                     </Space>
                 </PhotoSection>
             </Form.Item>
@@ -586,107 +508,20 @@ const handleNumericInputChange = useCallback((fieldName: string) => (e: React.Ch
         
         <Form.Item><Button type="primary" htmlType="submit" loading={loading} block size="large">Create Worker</Button></Form.Item>
       </Form>
-      <Modal
-        title="Take Photo"
-        open={cameraOpen}
-        onCancel={handleCameraClose}
-        footer={[
-          <Button key="back" onClick={handleCameraClose}>Cancel</Button>,
-          <Button
-            key="submit"
-            type="primary"
-            onClick={capturePhoto}
-          >
-            Capture
-          </Button>
-        ]}
-        width={700}
-        destroyOnClose={true}
-        centered
-        maskClosable={false}
-        style={{ top: 20 }}
-        bodyStyle={{
-          padding: '20px',
-          backgroundColor: '#ffffff',
-          maxHeight: '80vh',
-          overflow: 'auto'
+      
+      <FaceCapture
+        visible={faceCapture.visible}
+        onClose={() => setFaceCapture({ visible: false })}
+        onCapture={(result) => {
+          setPhotoSrc(result.photo);
+          setUploadedFile(null);
+          setFaceCapture({ visible: false });
+          form.validateFields(['photo']);
+          message.success('Photo captured successfully!');
         }}
-        getContainer={false}
-        zIndex={1000}
-      >
-        <div style={{
-          padding: '20px',
-          textAlign: 'center',
-          backgroundColor: '#ffffff',
-          minHeight: '400px',
-          borderRadius: '8px',
-          position: 'relative',
-          zIndex: 1001
-        }}>
-          <h3 style={{ color: '#333', marginBottom: '20px' }}>Camera Modal Test</h3>
-
-          {cameraError ? (
-            <div style={{ padding: '20px' }}>
-              <p style={{ color: 'red', fontSize: '16px' }}>Camera Error: {cameraError}</p>
-              <Button type="primary" onClick={handleCameraOpen}>
-                Try Again
-              </Button>
-            </div>
-          ) : (
-            <div>
-              <p style={{ marginBottom: '20px', color: '#333' }}>
-                Position yourself in the camera and click Capture
-              </p>
-
-              {cameraLoading ? (
-                <div style={{ padding: '40px' }}>
-                  <p>Initializing camera...</p>
-                  <div style={{
-                    border: '4px solid #f3f3f3',
-                    borderTop: '4px solid #1890ff',
-                    borderRadius: '50%',
-                    width: '40px',
-                    height: '40px',
-                    animation: 'spin 2s linear infinite',
-                    margin: '0 auto'
-                  }}></div>
-                </div>
-              ) : (
-                <div style={{
-                  border: '2px solid #ccc',
-                  borderRadius: '8px',
-                  padding: '10px',
-                  backgroundColor: '#f9f9f9',
-                  display: 'inline-block'
-                }}>
-
-                <Webcam
-                  audio={false}
-                  ref={webcamRef}
-                  screenshotFormat="image/jpeg"
-                  width={500}
-                  height={375}
-                  videoConstraints={{
-                    width: 500,
-                    height: 375,
-                    facingMode: "user"
-                  }}
-                  onUserMedia={(stream) => {
-                    setCameraLoading(false);
-                    setCameraError(null);
-                  }}
-                  onUserMediaError={(error) => {
-                    setCameraError(`Camera access denied: ${error.message || error.name || 'Unknown error'}`);
-                    setCameraLoading(false);
-                  }}
-                  style={{ borderRadius: '4px' }}
-                />
-              </div>
-              )}
-            </div>
-          )}
-        </div>
-      </Modal>
+        title="Take Worker Photo"
+        userName="Worker"
+      />
     </FormContainer>
   );
 };

@@ -9,6 +9,7 @@ export interface InductionTrainingData {
   location: string;
   conducted_by: string;
   status: 'planned' | 'completed' | 'cancelled';
+  evidence_photo?: string;
   created_at: string;
   updated_at: string;
   attendances?: InductionTrainingAttendanceData[];
@@ -26,6 +27,7 @@ export interface InductionTrainingAttendanceData {
   attendance_photo: string;
   status: 'present' | 'absent';
   timestamp: string;
+  created_at?: string;
   match_score?: number; // For photo matching confidence
 }
 

@@ -404,30 +404,7 @@ const AdminDetail: React.FC = () => {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      // Send notification to master admin only for initial submission
-      if (currentUserId && !isApproved && !formSubmitted) {
-        try {
-          // Send notification to user ID 5 (the master admin)
-          await sendNotification('5', {
-            title: 'Admin Details Submitted',
-            message: `${values.name || 'An admin'} submitted details for approval.`,
-            type: 'approval' as NotificationType,
-            data: { 
-              userId: currentUserId, 
-              user_id: currentUserId,
-              formType: 'admindetail',
-              username: authUsername,
-              admin_type: userType
-            },
-            link: `/dashboard/admindetail`
-          });
-          console.log('Notification sent to master admin');
-        } catch (notificationError) {
-          console.error('Failed to send notification:', notificationError);
-          // Don't fail the form submission if notification fails
-        }
-      }
-
+      // Details submitted successfully - backend handles notification
       message.success('Details submitted successfully for master admin approval.');
       setFormSubmitted(true);
       setHasDetails(true);

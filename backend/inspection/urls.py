@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import InspectionViewSet, InspectionItemViewSet, InspectionReportViewSet
+from .views import InspectionViewSet, InspectionItemViewSet, InspectionReportViewSet, inspection_users
 from .views_forms import ACCableInspectionFormViewSet, ACDBChecklistFormViewSet, HTCableChecklistFormViewSet, HTPreCommissionFormViewSet, HTPreCommissionTemplateFormViewSet, CivilWorkChecklistFormViewSet, CementRegisterFormViewSet, ConcretePourCardFormViewSet, PCCChecklistFormViewSet, BarBendingScheduleFormViewSet, BatteryChargerChecklistFormViewSet, BatteryUPSChecklistFormViewSet, BusDuctChecklistFormViewSet, ControlCableChecklistFormViewSet, ControlRoomAuditChecklistFormViewSet, EarthingChecklistFormViewSet
 
 router = DefaultRouter()
@@ -26,4 +26,5 @@ router.register(r'earthing-checklist-forms', EarthingChecklistFormViewSet, basen
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('users/', inspection_users, name='inspection-users'),
 ]

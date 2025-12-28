@@ -102,56 +102,109 @@ class JobTrainingViewSet(viewsets.ModelViewSet):
         
         return Response(user_data)
 
-    @action(detail=False, methods=['get'], url_path='deployed-workers')
-    def deployed_workers(self, request):
+    @action(detail=False, methods=['get'], url_path='trained-personnel')
+    def trained_personnel(self, request):
         """
-        Get all workers with 'deployed' employment status for job training attendance.
-        Only deployed workers can attend job training.
+        Get all induction-trained personnel (both workers and users) for job training attendance.
+        This includes both workers and admin users who have completed induction training.
         """
         try:
+            from inductiontraining.models import InductionAttendance, InductionTraining
             from worker.models import Worker
             from worker.serializers import WorkerSerializer
+            from authentication.serializers import AdminUserCommonSerializer
 
-            # Get ALL workers with 'deployed' status across all users and projects
-            deployed_workers = Worker.objects.filter(
-                employment_status='deployed'
-            ).select_related('created_by', 'project').order_by('name', 'surname')
+            # PROJECT ISOLATION: Ensure user has a project
+            if not request.user.project:
+                return Response({
+                    'error': 'Access denied',
+                    'message': 'User must be assigned to a project to access this data.'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            # Get attendance records from completed inductions in current project
+            project_inductions = InductionTraining.objects.filter(
+                project=request.user.project,
+                status='completed'
+            )
+            
+            trained_attendance = InductionAttendance.objects.filter(
+                induction__in=project_inductions,
+                status='present'
+            ).select_related('induction').order_by('-induction__date', 'worker_name')
 
+            # Separate workers and users
+            worker_records = trained_attendance.filter(participant_type='worker', worker_id__gt=0)
+            user_records = trained_attendance.filter(participant_type='user', worker_id__lt=0)
 
-            # Use the worker serializer to format the response consistently
-            # Include request context so photo URLs are properly built
-            serializer = WorkerSerializer(deployed_workers, many=True, context={'request': request})
+            # Get unique worker IDs and user IDs
+            trained_worker_ids = list(worker_records.values_list('worker_id', flat=True).distinct())
+            trained_user_ids = [-id for id in user_records.values_list('worker_id', flat=True).distinct()]
 
-            # Fix photo URLs to be absolute
-            serialized_data = serializer.data
-            for worker_data in serialized_data:
-                if worker_data.get('photo') and worker_data['photo'].startswith('/media/'):
-                    absolute_url = request.build_absolute_uri(worker_data['photo'])
-                    worker_data['photo'] = absolute_url
-                elif worker_data.get('photo') and not worker_data['photo'].startswith('http'):
-                    absolute_url = request.build_absolute_uri(worker_data['photo'])
-                    worker_data['photo'] = absolute_url
+            # Get worker details
+            trained_workers = Worker.objects.filter(
+                id__in=trained_worker_ids,
+                project=request.user.project
+            ).select_related('project', 'created_by')
 
-            # Add some statistics for better context
-            total_workers = Worker.objects.count()
-            initiated_workers = Worker.objects.filter(employment_status='initiated').count()
+            # Get user details
+            trained_users = User.objects.filter(
+                id__in=trained_user_ids,
+                project=request.user.project
+            ).select_related('project')
 
-            response_data = {
-                'count': deployed_workers.count(),
-                'workers': serialized_data,
-                'statistics': {
-                    'total_workers': total_workers,
-                    'deployed_workers': deployed_workers.count(),
-                    'initiated_workers': initiated_workers,
-                    'message': f'Showing {deployed_workers.count()} workers eligible for job training'
-                }
-            }
+            # Prepare worker data
+            workers_data = []
+            for worker in trained_workers:
+                worker_serializer = WorkerSerializer(worker, context={'request': request})
+                worker_data = worker_serializer.data
+                worker_data['participant_type'] = 'worker'
+                worker_data['participant_id'] = worker.id
+                
+                # Fix photo URLs
+                if worker_data.get('photo') and not worker_data['photo'].startswith('http'):
+                    worker_data['photo'] = request.build_absolute_uri(worker_data['photo'])
+                
+                workers_data.append(worker_data)
 
-            return Response(response_data)
+            # Prepare user data
+            users_data = []
+            for user in trained_users:
+                user_serializer = AdminUserCommonSerializer(user, context={'request': request})
+                user_data = user_serializer.data
+                user_data['participant_type'] = 'user'
+                user_data['participant_id'] = user.id
+                
+                # Add photo from user_detail if available
+                try:
+                    if hasattr(user, 'user_detail') and user.user_detail and user.user_detail.photo:
+                        photo_url = user.user_detail.photo.url
+                        if not photo_url.startswith('http'):
+                            user_data['photo'] = request.build_absolute_uri(photo_url)
+                        else:
+                            user_data['photo'] = photo_url
+                except:
+                    user_data['photo'] = None
+                
+                users_data.append(user_data)
+
+            # Combine all trained personnel
+            all_trained = workers_data + users_data
+
+            return Response({
+                'count': len(all_trained),
+                'workers': workers_data,
+                'users': users_data,
+                'all_participants': all_trained,
+                'workers_count': len(workers_data),
+                'users_count': len(users_data),
+                'message': f'Found {len(all_trained)} trained personnel eligible for job training'
+            })
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return Response(
-                {"error": f"Failed to fetch deployed workers: {str(e)}"},
+                {"error": f"Failed to fetch trained personnel: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
@@ -159,6 +212,7 @@ class JobTrainingViewSet(viewsets.ModelViewSet):
     def attendance(self, request, pk=None):
         """
         Get or submit attendance for a job training
+        Supports both workers and users who completed induction training
         """
         job_training = self.get_object()
         
@@ -179,54 +233,100 @@ class JobTrainingViewSet(viewsets.ModelViewSet):
             )
         
         created_records = []
-        present_worker_ids = []
+        present_participants = []
+        failed_records = []
         
         for record in attendance_records:
-            worker_id = record.get('worker_id')
+            participant_type = record.get('participant_type', 'worker')
+            participant_id = record.get('participant_id') or record.get('worker_id')
             attendance_status = record.get('status')
             attendance_photo = record.get('attendance_photo', '')
             match_score = record.get('match_score', 0)
             
+            if not participant_id:
+                failed_records.append({'record': record, 'error': 'Missing participant_id'})
+                continue
+            
             try:
-                worker = Worker.objects.get(id=worker_id)
-                
-                # Create or update attendance record
-                attendance, created = JobTrainingAttendance.objects.update_or_create(
-                    job_training=job_training,
-                    worker=worker,
-                    defaults={
-                        'status': attendance_status,
-                        'attendance_photo': attendance_photo,
-                        'match_score': match_score
-                    }
-                )
-                
-                created_records.append(attendance)
-                
-                if attendance_status == 'present':
-                    present_worker_ids.append(worker_id)
+                if participant_type == 'worker':
+                    # Handle worker attendance
+                    worker = Worker.objects.get(id=participant_id, project=request.user.project)
+                    
+                    # Create or update attendance record
+                    attendance, created = JobTrainingAttendance.objects.update_or_create(
+                        job_training=job_training,
+                        worker=worker,
+                        defaults={
+                            'status': attendance_status,
+                            'attendance_photo': attendance_photo,
+                            'match_score': match_score,
+                            'participant_type': 'worker'
+                        }
+                    )
+                    
+                    created_records.append(attendance)
+                    
+                    if attendance_status == 'present':
+                        present_participants.append(f"Worker: {worker.name} {worker.surname}")
+                        
+                elif participant_type == 'user':
+                    # Handle user attendance - create a special record
+                    user = User.objects.get(id=participant_id, project=request.user.project)
+                    
+                    # For users, we'll create a JobTrainingAttendance with a special marker
+                    # Since the model expects a worker, we'll use the user info in the attendance_photo field
+                    attendance, created = JobTrainingAttendance.objects.update_or_create(
+                        job_training=job_training,
+                        worker_id=None,  # No worker for users
+                        defaults={
+                            'status': attendance_status,
+                            'attendance_photo': attendance_photo,
+                            'match_score': match_score,
+                            'participant_type': 'user',
+                            'user_id': participant_id,  # Store user ID
+                            'user_name': user.get_full_name() or user.username
+                        }
+                    )
+                    
+                    created_records.append(attendance)
+                    
+                    if attendance_status == 'present':
+                        present_participants.append(f"User: {user.get_full_name() or user.username}")
                 
             except Worker.DoesNotExist:
-                return Response(
-                    {"error": f"Worker with ID {worker_id} does not exist"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                failed_records.append({'record': record, 'error': f'Worker with ID {participant_id} not found in project'})
+                continue
+            except User.DoesNotExist:
+                failed_records.append({'record': record, 'error': f'User with ID {participant_id} not found in project'})
+                continue
+            except Exception as e:
+                failed_records.append({'record': record, 'error': str(e)})
+                continue
         
         # Update job training status to completed
         job_training.status = 'completed'
+        if evidence_photo:
+            job_training.evidence_photo = evidence_photo
         job_training.save()
         
         return Response({
             'message': 'Attendance submitted successfully',
             'records_created': len(created_records),
-            'workers_present': len(present_worker_ids)
+            'participants_present': len(present_participants),
+            'present_participants': present_participants,
+            'failed_records': failed_records,
+            'total_submitted': len(attendance_records),
+            'success_rate': f"{(len(created_records)/len(attendance_records)*100):.1f}%" if attendance_records else "0%"
         }, status=status.HTTP_201_CREATED)
 
+    @require_permission('edit')
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
     
+    @require_permission('edit')
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
     
+    @require_permission('delete')
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)

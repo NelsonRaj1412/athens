@@ -69,6 +69,8 @@ class MomSerializer(serializers.ModelSerializer):
     participants_ids = serializers.PrimaryKeyRelatedField(
         many=True, queryset=CustomUser.objects.all(), write_only=True, source='participants'
     )
+    can_edit = serializers.SerializerMethodField()
+    can_delete = serializers.SerializerMethodField()
     
     class Meta:
         model = Mom
@@ -87,13 +89,58 @@ class MomSerializer(serializers.ModelSerializer):
             'status',
             'completed_at',
             'duration_minutes',
+            'can_edit',
+            'can_delete',
         ]
+    
+    def get_can_edit(self, obj):
+        """Check if current user can edit this MOM"""
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        # Only creator can edit
+        return obj.scheduled_by == request.user
+    
+    def get_can_delete(self, obj):
+        """Check if current user can delete this MOM"""
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        # Only creator can delete
+        return obj.scheduled_by == request.user
+    
+    def validate_meeting_datetime(self, value):
+        """Validate meeting datetime - skip future validation in edit mode"""
+        # Check if this is an update operation (instance exists)
+        if self.instance:
+            # In edit mode, allow any datetime without future validation
+            return value
+        
+        # For new meetings, require future datetime
+        from django.utils import timezone
+        if value <= timezone.now():
+            raise serializers.ValidationError("Meeting datetime must be in the future for new meetings.")
+        return value
 
     def create(self, validated_data):
         participants = validated_data.pop('participants', [])
         mom = Mom.objects.create(**validated_data)
         mom.participants.set(participants)
         return mom
+    
+    def update(self, instance, validated_data):
+        participants = validated_data.pop('participants', None)
+        
+        # Update all other fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        # Update participants if provided
+        if participants is not None:
+            instance.participants.set(participants)
+        
+        return instance
 
 # Removed NotificationSerializer - now using authentication notification system
 

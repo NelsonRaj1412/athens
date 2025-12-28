@@ -70,18 +70,48 @@ class MomUpdateView(generics.RetrieveUpdateAPIView):
     serializer_class = MomSerializer
     permission_classes = [permissions.IsAuthenticated]
     
+    def get_serializer_context(self):
+        """Pass request context to serializer for permission checks"""
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+    
+    def get_object(self):
+        obj = super().get_object()
+        # PROJECT ISOLATION: Ensure user can only access MOMs from their project
+        if not self.request.user.project or obj.project != self.request.user.project:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You can only access meetings from your project.")
+        return obj
+    
     def update(self, request, *args, **kwargs):
+        obj = self.get_object()
+        # Only the creator can edit the MOM
+        if obj.scheduled_by != request.user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only the meeting creator can edit this meeting.")
         return super().update(request, *args, **kwargs)
     
     def partial_update(self, request, *args, **kwargs):
+        obj = self.get_object()
+        # Only the creator can edit the MOM
+        if obj.scheduled_by != request.user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only the meeting creator can edit this meeting.")
         return super().partial_update(request, *args, **kwargs)
 
 class MomListView(generics.ListAPIView):
     serializer_class = MomSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_serializer_context(self):
+        """Pass request context to serializer for permission checks"""
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
     def get_queryset(self):
-        """PROJECT ISOLATION: Filter by user's project"""
+        """PROJECT ISOLATION: Filter by user's project with proper permissions"""
         user = self.request.user
         
         # Master admin sees all data
@@ -93,6 +123,17 @@ class MomListView(generics.ListAPIView):
                 return Mom.objects.none()
             
             queryset = Mom.objects.filter(project=user.project)
+            
+            # Users can see:
+            # 1. Meetings they created
+            # 2. Meetings they are participants in
+            # 3. Completed meetings (view only)
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(scheduled_by=user) |  # Created by user
+                Q(participants=user) |  # User is participant
+                Q(status=Mom.MeetingStatus.COMPLETED)  # Completed meetings (public view)
+            ).distinct()
         
         department = self.request.query_params.get('department')
         if department:
@@ -104,7 +145,20 @@ class MomDeleteView(generics.DestroyAPIView):
     serializer_class = MomSerializer
     permission_classes = [permissions.IsAuthenticated]
     
+    def get_object(self):
+        obj = super().get_object()
+        # PROJECT ISOLATION: Ensure user can only access MOMs from their project
+        if not self.request.user.project or obj.project != self.request.user.project:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You can only access meetings from your project.")
+        return obj
+    
     def destroy(self, request, *args, **kwargs):
+        obj = self.get_object()
+        # Only the creator can delete the MOM
+        if obj.scheduled_by != request.user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only the meeting creator can delete this meeting.")
         return super().destroy(request, *args, **kwargs)
 
 class ParticipantResponseView(APIView):
@@ -283,7 +337,21 @@ class MeetingInfoView(APIView):
     def get(self, request, mom_id):
         try:
             mom = Mom.objects.get(id=mom_id)
+            
+            # PROJECT ISOLATION: Ensure user can only access MOMs from their project
+            if not request.user.project or mom.project != request.user.project:
+                return Response({
+                    'error': 'You can only access meetings from your project'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
             is_participant = mom.participants.filter(id=request.user.id).exists()
+            is_creator = mom.scheduled_by == request.user
+            can_view = is_creator or is_participant or mom.status == Mom.MeetingStatus.COMPLETED
+            
+            if not can_view:
+                return Response({
+                    'error': 'You do not have permission to view this meeting'
+                }, status=status.HTTP_403_FORBIDDEN)
 
             return Response({
                 'id': mom.id,
@@ -293,6 +361,9 @@ class MeetingInfoView(APIView):
                 'department': mom.department,
                 'status': mom.status,
                 'is_participant': is_participant,
+                'is_creator': is_creator,
+                'can_edit': is_creator,
+                'can_delete': is_creator,
                 'scheduled_by': {
                     'id': mom.scheduled_by.id,
                     'name': mom.scheduled_by.name or mom.scheduled_by.username,
@@ -311,6 +382,16 @@ class MomLiveView(APIView):
 
     def get(self, request, pk):
         mom = get_object_or_404(Mom, pk=pk)
+        
+        # PROJECT ISOLATION: Ensure user can only access MOMs from their project
+        if not request.user.project or mom.project != request.user.project:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You can only access meetings from your project.")
+        
+        # Permission check: Only creator or participants can access live meeting
+        if mom.scheduled_by != request.user and not mom.participants.filter(id=request.user.id).exists():
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only the meeting creator or participants can access the live meeting.")
 
         # Auto-update no response status when meeting is accessed in live mode
         if mom.status == Mom.MeetingStatus.LIVE:
@@ -371,6 +452,17 @@ class MomCompleteView(APIView):
 
     def put(self, request, pk):
         mom = get_object_or_404(Mom, pk=pk)
+        
+        # PROJECT ISOLATION: Ensure user can only access MOMs from their project
+        if not request.user.project or mom.project != request.user.project:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You can only access meetings from your project.")
+        
+        # Only the creator can complete the meeting
+        if mom.scheduled_by != request.user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only the meeting creator can complete this meeting.")
+        
         # Data from MomLive.tsx
         mom.completed_at = request.data.get('completed_at')
         mom.duration_minutes = request.data.get('duration_minutes')

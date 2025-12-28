@@ -27,7 +27,7 @@ import ChatBox from '@features/chatbox/components/chatbox';
 import RoleBasedRoute from './RoleBasedRoute';
 // Removed unused manpower imports - files were cleaned up
 import DailyAttendanceForm from '@features/manpower/components/DailyAttendanceForm';
-import ManpowerVisualization from '@features/manpower/components/ManpowerVisualization';
+import ConsolidatedManpowerView from '@features/manpower/components/ConsolidatedManpowerView';
 import WorkerPage from '@features/worker/pages/WorkerPage';
 import ToolboxTalkList from '@features/toolboxtalk/components/ToolboxTalkList';
 import InductionTrainingList from '@features/inductiontraining/components/InductionTrainingList';
@@ -107,6 +107,9 @@ import QualityDashboardEnhanced from '@features/quality/components/QualityDashbo
 
 // Alerts imports
 import AlertsPage from '@features/alerts/components/AlertsPage';
+
+// Analytics imports
+import AnalyticsPage from '@features/analytics/components/AnalyticsPage';
 
 // PTW Redirect component for old test links
 const PTWRedirect: React.FC = () => {
@@ -226,16 +229,16 @@ const App: React.FC = () => {
               <Route path="admindetail" element={<RoleBasedRoute allowedRoles={['master', 'client', 'epc', 'contractor', 'contractor1', 'contractor2', 'contractor3', 'contractor4', 'contractor5', 'projectadmin']}><AdminDetail /></RoleBasedRoute>} />
               <Route path="pending-approvals" element={<RoleBasedRoute allowedRoles={['master']}><PendingApprovals /></RoleBasedRoute>} />
               <Route path="users" element={<RoleBasedRoute allowedRoles={['client', 'epc', 'contractor', 'contractor1', 'contractor2', 'contractor3', 'contractor4', 'contractor5']}><UserList /></RoleBasedRoute>} />
-              <Route path="userdetail" element={<RoleBasedRoute allowedRoles={['adminuser']}><UserDetail /></RoleBasedRoute>} />
+              <Route path="userdetail" element={<RoleBasedRoute allowedRoles={['adminuser', 'clientuser', 'epcuser', 'contractoruser']}><UserDetail /></RoleBasedRoute>} />
               <Route path="profile" element={<ProfileWrapper />} />
               <Route path="settings" element={<CompanyDetailsForm />} />
               <Route path="chatbox" element={<RoleBasedRoute allowedRoles={['clientuser', 'contractoruser', 'epcuser']}><ChatBox /></RoleBasedRoute>} />
               <Route path="ai-bot" element={<RoleBasedRoute allowedRoles={['adminuser', 'clientuser', 'epcuser', 'contractoruser']}><AIBotWidget /></RoleBasedRoute>} />
               <Route path="voice-translator" element={<RoleBasedRoute allowedRoles={['adminuser', 'clientuser', 'epcuser', 'contractoruser']}><VoiceTranslator /></RoleBasedRoute>} />
               {/* Main manpower page shows list with CRUD operations */}
-              <Route path="manpower" element={<RoleBasedRoute allowedRoles={['clientuser', 'epcuser', 'contractoruser', 'adminuser']}><ManpowerVisualization /></RoleBasedRoute>} />
+              <Route path="manpower" element={<RoleBasedRoute allowedRoles={['clientuser', 'epcuser', 'contractoruser', 'adminuser']}><ConsolidatedManpowerView /></RoleBasedRoute>} />
               <Route path="manpower/add" element={<RoleBasedRoute allowedRoles={['clientuser', 'epcuser', 'contractoruser', 'adminuser']}><DailyAttendanceForm /></RoleBasedRoute>} />
-              <Route path="manpower/reports" element={<RoleBasedRoute allowedRoles={['clientuser', 'epcuser', 'contractoruser', 'adminuser']}><ManpowerVisualization /></RoleBasedRoute>} />
+              <Route path="manpower/reports" element={<RoleBasedRoute allowedRoles={['clientuser', 'epcuser', 'contractoruser', 'adminuser']}><ConsolidatedManpowerView /></RoleBasedRoute>} />
               {/* Removed legacy manpower routes - components were cleaned up */}
               <Route path="workers" element={<RoleBasedRoute allowedRoles={['client', 'epc', 'contractor', 'contractor1', 'contractor2', 'contractor3', 'contractor4', 'contractor5', 'clientuser', 'epcuser', 'contractoruser']}><WorkerPage /></RoleBasedRoute>} />
               <Route path="toolboxtalk" element={<RoleBasedRoute allowedRoles={['adminuser', 'clientuser', 'epcuser', 'contractoruser']}><ToolboxTalkList /></RoleBasedRoute>} />
@@ -354,6 +357,9 @@ const App: React.FC = () => {
               
               {/* General Alerts Route */}
               <Route path="alerts" element={<RoleBasedRoute allowedRoles={['adminuser', 'client', 'epc', 'contractor', 'clientuser', 'epcuser', 'contractoruser']}><AlertsPage /></RoleBasedRoute>} />
+              
+              {/* Analytics Route */}
+              <Route path="analytics" element={<RoleBasedRoute allowedRoles={['adminuser', 'client', 'epc', 'contractor', 'clientuser', 'epcuser', 'contractoruser']}><AnalyticsPage /></RoleBasedRoute>} />
             </Route>
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="participant-response/:momId/:userId" element={<ParticipantResponse />} />

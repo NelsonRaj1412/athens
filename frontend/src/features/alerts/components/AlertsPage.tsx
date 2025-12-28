@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, List, Badge, Button, Tag, Space, Typography, Row, Col, Statistic, Alert, App, Tabs } from 'antd';
 import { AlertOutlined, ExclamationCircleOutlined, CheckCircleOutlined, ClockCircleOutlined, FileTextOutlined, SafetyOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import PageLayout from '@common/components/PageLayout';
 import { getQualityAlerts, acknowledgeAlert } from '../../quality/api';
 
@@ -81,9 +82,25 @@ const SYSTEM_ALERTS: AlertItem[] = [
 
 const AlertsPage: React.FC = () => {
   const { message } = App.useApp();
+  const navigate = useNavigate();
   const [qualityAlerts, setQualityAlerts] = useState<AlertItem[]>([]);
   const [systemAlerts, setSystemAlerts] = useState<AlertItem[]>(SYSTEM_ALERTS);
   const [loading, setLoading] = useState(false);
+
+  const getNavigationUrl = (category: string) => {
+    switch (category) {
+      case 'PTW':
+        return '/dashboard/ptw';
+      case 'Safety':
+        return '/dashboard/safetyobservation/list';
+      case 'Environmental':
+        return '/dashboard/esg';
+      case 'Training':
+        return '/dashboard/inductiontraining';
+      default:
+        return '/dashboard';
+    }
+  };
 
   useEffect(() => {
     loadAlerts();
@@ -163,17 +180,7 @@ const AlertsPage: React.FC = () => {
               {alert.is_acknowledged ? 'Acknowledged' : 'Acknowledge'}
             </Button>,
             <Button key="view" size="small" type="primary"
-              onClick={() => {
-                if (alert.category === 'PTW') {
-                  window.location.href = '/dashboard/ptw';
-                } else if (alert.category === 'Safety') {
-                  window.location.href = '/dashboard/safetyobservation';
-                } else if (alert.category === 'Environmental') {
-                  window.location.href = '/dashboard/esg';
-                } else if (alert.category === 'Training') {
-                  window.location.href = '/dashboard/jobtraining';
-                }
-              }}
+              onClick={() => navigate(getNavigationUrl(alert.category || ''))}
             >
               View Details
             </Button>

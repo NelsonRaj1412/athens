@@ -75,11 +75,14 @@ class JobTrainingSerializer(serializers.ModelSerializer):
         return super().to_internal_value(cleaned_data)
 
 class JobTrainingListSerializer(serializers.ModelSerializer):
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    
     class Meta:
         model = JobTraining
         fields = [
             'id', 'title', 'description', 'date', 'location', 
-            'conducted_by', 'status', 'created_at', 'updated_at'
+            'conducted_by', 'status', 'created_by', 'created_by_username',
+            'created_at', 'updated_at'
         ]
 
 class UserSerializer(serializers.ModelSerializer):

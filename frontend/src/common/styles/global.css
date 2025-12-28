@@ -879,6 +879,129 @@ body {
   justify-content: center !important;
 }
 
+/* Dashboard sidebar menu icon color fixes - HIGH SPECIFICITY */
+.dashboard-layout .ant-layout-sider .ant-menu .ant-menu-item .anticon,
+.dashboard-layout .ant-layout-sider .ant-menu .ant-menu-submenu-title .anticon {
+  color: var(--color-text-muted) !important;
+  transition: color 0.3s ease !important;
+}
+
+.dashboard-layout .ant-layout-sider .ant-menu .ant-menu-item:hover .anticon,
+.dashboard-layout .ant-layout-sider .ant-menu .ant-menu-submenu-title:hover .anticon {
+  color: var(--color-primary) !important;
+}
+
+.dashboard-layout .ant-layout-sider .ant-menu .ant-menu-item-selected .anticon,
+.dashboard-layout .ant-layout-sider .ant-menu .ant-menu-submenu-selected .ant-menu-submenu-title .anticon {
+  color: var(--color-primary) !important;
+}
+
+/* Force Training menu icon color - MAXIMUM SPECIFICITY */
+.dashboard-layout .ant-layout-sider .ant-menu .ant-menu-submenu[data-menu-id*="training"] .ant-menu-submenu-title .anticon,
+.dashboard-layout .ant-layout-sider .ant-menu .ant-menu-item[data-menu-id*="training"] .anticon,
+.dashboard-layout .ant-layout-sider .ant-menu .ant-menu-submenu .ant-menu-submenu-title .anticon {
+  color: var(--color-text-muted) !important;
+  fill: var(--color-text-muted) !important;
+}
+
+.dashboard-layout .ant-layout-sider .ant-menu .ant-menu-submenu[data-menu-id*="training"]:hover .ant-menu-submenu-title .anticon,
+.dashboard-layout .ant-layout-sider .ant-menu .ant-menu-item[data-menu-id*="training"]:hover .anticon,
+.dashboard-layout .ant-layout-sider .ant-menu .ant-menu-submenu:hover .ant-menu-submenu-title .anticon {
+  color: var(--color-primary) !important;
+  fill: var(--color-primary) !important;
+}
+
+/* Dark theme - MAXIMUM SPECIFICITY */
+.dark .dashboard-layout .ant-layout-sider .ant-menu .ant-menu-item .anticon,
+.dark .dashboard-layout .ant-layout-sider .ant-menu .ant-menu-submenu-title .anticon {
+  color: #8a92a0 !important;
+  fill: #8a92a0 !important;
+}
+
+.dark .dashboard-layout .ant-layout-sider .ant-menu .ant-menu-item:hover .anticon,
+.dark .dashboard-layout .ant-layout-sider .ant-menu .ant-menu-submenu-title:hover .anticon {
+  color: #5865f2 !important;
+  fill: #5865f2 !important;
+}
+
+.dark .dashboard-layout .ant-layout-sider .ant-menu .ant-menu-item-selected .anticon,
+.dark .dashboard-layout .ant-layout-sider .ant-menu .ant-menu-submenu-selected .ant-menu-submenu-title .anticon {
+  color: #5865f2 !important;
+  fill: #5865f2 !important;
+}
+
+/* Override any Ant Design default styles */
+.ant-menu-dark .ant-menu-item .anticon,
+.ant-menu-dark .ant-menu-submenu-title .anticon {
+  color: var(--color-text-muted) !important;
+}
+
+.ant-menu-dark .ant-menu-item:hover .anticon,
+.ant-menu-dark .ant-menu-submenu-title:hover .anticon {
+  color: var(--color-primary) !important;
+}
+
+/* Dashboard sidebar menu icon color fixes */
+.dashboard-sidebar .ant-menu-item .anticon,
+.dashboard-sidebar .ant-menu-submenu-title .anticon {
+  color: var(--color-text-muted) !important;
+  transition: color 0.3s ease;
+}
+
+.dashboard-sidebar .ant-menu-item:hover .anticon,
+.dashboard-sidebar .ant-menu-submenu-title:hover .anticon {
+  color: var(--color-primary) !important;
+}
+
+.dashboard-sidebar .ant-menu-item-selected .anticon,
+.dashboard-sidebar .ant-menu-submenu-selected .ant-menu-submenu-title .anticon {
+  color: var(--color-primary) !important;
+}
+
+/* Ensure Training menu icon has proper color in all themes */
+.dashboard-sidebar .ant-menu-submenu[data-menu-id*="training"] .anticon,
+.dashboard-sidebar .ant-menu-item[data-menu-id*="training"] .anticon {
+  color: var(--color-text-muted) !important;
+}
+
+.dashboard-sidebar .ant-menu-submenu[data-menu-id*="training"]:hover .anticon,
+.dashboard-sidebar .ant-menu-item[data-menu-id*="training"]:hover .anticon {
+  color: var(--color-primary) !important;
+}
+
+/* Dark theme specific fixes for menu icons */
+.dark .dashboard-sidebar .ant-menu-item .anticon,
+.dark .dashboard-sidebar .ant-menu-submenu-title .anticon {
+  color: var(--color-text-muted) !important;
+}
+
+.dark .dashboard-sidebar .ant-menu-item:hover .anticon,
+.dark .dashboard-sidebar .ant-menu-submenu-title:hover .anticon {
+  color: var(--color-primary) !important;
+}
+
+.dark .dashboard-sidebar .ant-menu-item-selected .anticon,
+.dark .dashboard-sidebar .ant-menu-submenu-selected .ant-menu-submenu-title .anticon {
+  color: var(--color-primary) !important;
+}
+
+/* Force override any conflicting styles for menu text and icons */
+.dashboard-sidebar .ant-menu-item,
+.dashboard-sidebar .ant-menu-submenu-title {
+  color: var(--color-text-muted) !important;
+}
+
+.dashboard-sidebar .ant-menu-item:hover,
+.dashboard-sidebar .ant-menu-submenu-title:hover {
+  color: var(--color-text-base) !important;
+}
+
+.dashboard-sidebar .ant-menu-item-selected,
+.dashboard-sidebar .ant-menu-submenu-selected .ant-menu-submenu-title {
+  color: var(--color-primary) !important;
+  background-color: var(--color-ui-hover) !important;
+}
+
 /*
   STEP 10: Alert Component Styling Fixes
 */

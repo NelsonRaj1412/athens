@@ -28,28 +28,72 @@ class UserListView(APIView):
 
         # Ensure user has a project assigned
         if not user_project:
-            return Response([])
+            return Response({
+                'error': 'No project assigned',
+                'message': 'User must be assigned to a project to access chat.'
+            }, status=status.HTTP_403_FORBIDDEN)
 
+        # Enhanced communication matrix for proper cross-role communication
         if admin_type == 'clientuser':
+            # Client users can communicate with EPC users and Contractor users
             users = CustomUser.objects.filter(
-                admin_type__in=['clientuser', 'epcuser'],
-                project=user_project
+                admin_type__in=['epcuser', 'contractoruser'],
+                project=user_project,
+                is_active=True
             ).exclude(id=current_user.id)
         elif admin_type == 'epcuser':
+            # EPC users can communicate with Client users and Contractor users
             users = CustomUser.objects.filter(
-                admin_type__in=['epcuser', 'clientuser', 'contractoruser'],
-                project=user_project
+                admin_type__in=['clientuser', 'contractoruser'],
+                project=user_project,
+                is_active=True
             ).exclude(id=current_user.id)
         elif admin_type == 'contractoruser':
+            # Contractor users can communicate with EPC users and Client users
             users = CustomUser.objects.filter(
-                admin_type__in=['contractoruser', 'epcuser'],
-                project=user_project
+                admin_type__in=['epcuser', 'clientuser'],
+                project=user_project,
+                is_active=True
             ).exclude(id=current_user.id)
         else:
             users = CustomUser.objects.none()
 
-        serializer = CustomUserSerializer(users, many=True)
-        return Response(serializer.data)
+        # Ensure users have proper details for display
+        users_data = []
+        for user in users:
+            user_data = {
+                'id': user.id,
+                'username': user.username,
+                'name': user.get_full_name() or user.username,
+                'email': user.email or '',
+                'admin_type': user.admin_type,
+                'company_name': getattr(user, 'company_name', ''),
+                'department': getattr(user, 'department', ''),
+                'designation': getattr(user, 'designation', ''),
+                'is_active': user.is_active
+            }
+            
+            # Add photo if available
+            try:
+                if hasattr(user, 'user_detail') and user.user_detail and user.user_detail.photo:
+                    photo_url = user.user_detail.photo.url
+                    if not photo_url.startswith('http'):
+                        user_data['photo'] = request.build_absolute_uri(photo_url)
+                    else:
+                        user_data['photo'] = photo_url
+                else:
+                    user_data['photo'] = None
+            except:
+                user_data['photo'] = None
+            
+            users_data.append(user_data)
+
+        return Response({
+            'users': users_data,
+            'count': len(users_data),
+            'current_user_type': admin_type,
+            'project': user_project.projectName if user_project else None
+        })
 
 class MessagePagination(PageNumberPagination):
     page_size = 20

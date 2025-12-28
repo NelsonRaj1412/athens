@@ -16,10 +16,6 @@
   display: flex;
   width: 100%;
   background: rgba(255, 255, 255, 0.8);
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-blend-mode: multiply;
   border-radius: 4px;
   padding: 8px;
 }
@@ -32,9 +28,9 @@
   right: 0;
   bottom: 0;
   background-image: inherit;
-  background-size: inherit;
-  background-repeat: inherit;
-  background-position: inherit;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
   opacity: 0.5;
   z-index: -1;
 }

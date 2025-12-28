@@ -25,8 +25,13 @@ class SignatureTemplateCreateView(APIView):
             # Get or create user detail
             user_detail, created = UserDetail.objects.get_or_create(user=request.user)
             
+            # Get logo opacity from request (default to 0.5 if not provided)
+            logo_opacity = float(request.data.get('logo_opacity', 0.5))
+            # Ensure opacity is within valid range
+            logo_opacity = max(0.0, min(1.0, logo_opacity))
+            
             # Create signature template
-            user_detail = create_user_signature_template(user_detail)
+            user_detail = create_user_signature_template(user_detail, logo_opacity=logo_opacity)
             
             # Build full URL for the template
             template_url = None
@@ -39,7 +44,8 @@ class SignatureTemplateCreateView(APIView):
                 'success': True,
                 'message': 'Signature template created successfully',
                 'template_url': template_url,
-                'template_data': user_detail.signature_template_data
+                'template_data': user_detail.signature_template_data,
+                'logo_opacity': logo_opacity
             }, status=status.HTTP_201_CREATED)
             
         except Exception as e:
@@ -200,12 +206,20 @@ class RegenerateSignatureTemplateView(APIView):
         try:
             user_detail = get_object_or_404(UserDetail, user=request.user)
             
+            # Get logo opacity from request (default to 0.5 if not provided)
+            try:
+                logo_opacity = float(request.data.get('logo_opacity', 0.5))
+                # Ensure opacity is within valid range
+                logo_opacity = max(0.0, min(1.0, logo_opacity))
+            except (ValueError, TypeError):
+                logo_opacity = 0.5
+            
             # Delete old template if exists
             if user_detail.signature_template:
                 user_detail.signature_template.delete(save=False)
             
             # Create new template
-            user_detail = create_user_signature_template(user_detail)
+            user_detail = create_user_signature_template(user_detail, logo_opacity=logo_opacity)
             
             # Build full URL for the template
             template_url = user_detail.signature_template.url
@@ -216,7 +230,8 @@ class RegenerateSignatureTemplateView(APIView):
                 'success': True,
                 'message': 'Signature template regenerated successfully',
                 'template_url': template_url,
-                'template_data': user_detail.signature_template_data
+                'template_data': user_detail.signature_template_data,
+                'logo_opacity': logo_opacity
             })
             
         except UserDetail.DoesNotExist:
@@ -227,7 +242,7 @@ class RegenerateSignatureTemplateView(APIView):
         except Exception as e:
             return Response({
                 'success': False,
-                'error': str(e)
+                'error': f'Failed to regenerate template: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -246,8 +261,13 @@ class AdminSignatureTemplateCreateView(APIView):
             # Get or create admin detail
             admin_detail, created = AdminDetail.objects.get_or_create(user=request.user)
 
+            # Get logo opacity from request (default to 0.5 if not provided)
+            logo_opacity = float(request.data.get('logo_opacity', 0.5))
+            # Ensure opacity is within valid range
+            logo_opacity = max(0.0, min(1.0, logo_opacity))
+
             # Create signature template
-            admin_detail = create_admin_signature_template(admin_detail)
+            admin_detail = create_admin_signature_template(admin_detail, logo_opacity=logo_opacity)
 
             # Build full URL for the template
             template_url = None
@@ -260,7 +280,8 @@ class AdminSignatureTemplateCreateView(APIView):
                 'success': True,
                 'message': 'Admin signature template created successfully',
                 'template_url': template_url,
-                'template_data': admin_detail.signature_template_data
+                'template_data': admin_detail.signature_template_data,
+                'logo_opacity': logo_opacity
             }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -376,12 +397,17 @@ class AdminRegenerateSignatureTemplateView(APIView):
         try:
             admin_detail = get_object_or_404(AdminDetail, user=request.user)
 
+            # Get logo opacity from request (default to 0.5 if not provided)
+            logo_opacity = float(request.data.get('logo_opacity', 0.5))
+            # Ensure opacity is within valid range
+            logo_opacity = max(0.0, min(1.0, logo_opacity))
+
             # Delete old template if exists
             if admin_detail.signature_template:
                 admin_detail.signature_template.delete(save=False)
 
             # Create new template
-            admin_detail = create_admin_signature_template(admin_detail)
+            admin_detail = create_admin_signature_template(admin_detail, logo_opacity=logo_opacity)
 
             # Build full URL for the template
             template_url = admin_detail.signature_template.url
@@ -392,7 +418,8 @@ class AdminRegenerateSignatureTemplateView(APIView):
                 'success': True,
                 'message': 'Admin signature template regenerated successfully',
                 'template_url': template_url,
-                'template_data': admin_detail.signature_template_data
+                'template_data': admin_detail.signature_template_data,
+                'logo_opacity': logo_opacity
             })
 
         except AdminDetail.DoesNotExist:

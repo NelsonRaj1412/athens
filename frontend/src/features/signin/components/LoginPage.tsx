@@ -4,8 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Form, Input, Button, Checkbox, App } from 'antd';
 import { useNavigate } from 'react-router-dom';
-// Using react-icons for better brand logos. You may need to run: npm install react-icons
-import { FaApple, FaGoogle, FaXTwitter } from 'react-icons/fa6';
+// Removed social media icons
 
 import api from '../../../common/utils/axiosetup';
 import useAuthStore from '../../../common/store/authStore';
@@ -196,42 +195,7 @@ const LoginPage: React.FC = () => {
               <p className="mt-2 text-gray-500">Log in with Open account</p>
             </div>
 
-            <div className="flex items-center justify-center space-x-4 mb-6">
-              <Button 
-                size="large" 
-                icon={<FaApple className="text-xl" />} 
-                className="!w-16 !h-12 !flex !items-center !justify-center" 
-                onClick={(e) => {
-                  e.preventDefault();
-                  // Apple login placeholder
-                  message.info('Apple login coming soon!');
-                }}
-              />
-              <Button 
-                size="large" 
-                icon={<FaGoogle className="text-xl" />} 
-                className="!w-16 !h-12 !flex !items-center !justify-center" 
-                onClick={(e) => {
-                  e.preventDefault();
-                  // Google login placeholder
-                  message.info('Google login coming soon!');
-                }}
-              />
-              <Button 
-                size="large" 
-                icon={<FaXTwitter className="text-xl" />} 
-                className="!w-16 !h-12 !flex !items-center !justify-center" 
-                onClick={(e) => {
-                  e.preventDefault();
-                  // Twitter login placeholder
-                  message.info('Twitter login coming soon!');
-                }}
-              />
-            </div>
 
-            <div className="my-6 flex items-center">
-              <hr className="w-full" /><span className="mx-4 text-xs uppercase text-gray-400">Or</span><hr className="w-full" />
-            </div>
 
             <Form layout="vertical" onFinish={onFinish} requiredMark={false} autoComplete="off">
               <Form.Item
@@ -284,9 +248,8 @@ const LoginPage: React.FC = () => {
                   }}
                 />
               </Form.Item>
-              <div className="mb-6 flex items-center justify-between text-sm">
+              <div className="mb-6 flex items-center justify-start text-sm">
                 <Form.Item name="remember" valuePropName="checked" noStyle><Checkbox>Remember me</Checkbox></Form.Item>
-                <a href="#" className="font-semibold text-gray-700 hover:text-black">Forgot Password?</a>
               </div>
               <Form.Item>
                 <Button type="primary" htmlType="submit" loading={isLoading} className="w-full !h-12 !text-base !font-semibold !bg-black hover:!bg-gray-800 !rounded-lg">
@@ -294,18 +257,7 @@ const LoginPage: React.FC = () => {
                 </Button>
               </Form.Item>
 
-              {/* Your original bottom links, preserved */}
-              <div className="mt-4 text-center text-sm text-gray-600">
-                Don't have an account?{' '}
-                <a href="/signup" className="font-semibold text-indigo-600 hover:text-indigo-500">
-                  Create one for free
-                </a>
-              </div>
-              <div className="mt-6 text-center">
-                <Button type="default" onClick={() => window.location.href = '/create-master-admin'}>
-                  Create Master Admin
-                </Button>
-              </div>
+
             </Form>
           </div>
         </motion.div>

@@ -36,30 +36,31 @@ const ToolboxTalkAttendance: React.FC<ToolboxTalkAttendanceProps> = ({ toolboxTa
     const fetchWorkers = async () => {
       setLoading(true);
       try {
-        // Only fetch workers with "deployed" employment status
-        const response = await api.get('/worker/by_employment_status/?status=deployed');
-        if (Array.isArray(response.data)) {
-          const fetchedWorkers = response.data.map((worker: any) => ({
-            key: String(worker.id),
-            id: worker.id,
-            name: worker.name,
-            worker_id: worker.worker_id,
-            surname: worker.surname || '',
-            photo: worker.photo,
-            department: worker.department,
-            designation: worker.designation,
-            status: worker.status,
-            phone_number: worker.phone_number || '',
-            email: worker.email || '',
-            address: worker.address || '',
-            joining_date: worker.joining_date || worker.date_of_joining || '',
-            employment_status: worker.employment_status || 'deployed',
-            // Add any other required fields from WorkerData
+        // Fetch induction-trained personnel (both workers and users)
+        const response = await api.get('/tbt/trained-personnel/');
+        if (response.data && response.data.all_participants) {
+          const fetchedWorkers = response.data.all_participants.map((participant: any) => ({
+            key: String(participant.id),
+            id: participant.id,
+            name: participant.name,
+            worker_id: participant.worker_id || participant.username,
+            surname: participant.surname || '',
+            photo: participant.photo,
+            department: participant.department,
+            designation: participant.designation,
+            status: participant.status,
+            phone_number: participant.phone_number || '',
+            email: participant.email || '',
+            address: participant.address || '',
+            joining_date: participant.joining_date || participant.date_of_joining || '',
+            employment_status: participant.employment_status || 'trained',
+            participant_type: participant.participant_type || 'worker',
+            participant_id: participant.participant_id || participant.id,
           })) as WorkerData[];
           setWorkers(fetchedWorkers);
         }
       } catch (error) {
-        message.error('Failed to fetch workers');
+        message.error('Failed to fetch trained personnel');
       } finally {
         setLoading(false);
       }

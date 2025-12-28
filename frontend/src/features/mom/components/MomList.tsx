@@ -20,7 +20,9 @@ interface Mom {
   agenda: string;
   meeting_datetime: string;
   scheduled_by: number;
-  status?: string; // added optional status field
+  status?: string;
+  can_edit?: boolean;
+  can_delete?: boolean;
 }
 
 interface ApiResponse {
@@ -242,27 +244,31 @@ const MomList: React.FC = () => {
             <Button type="link" onClick={() => handleView(record.id)}>
               View
             </Button>
-            <Button 
-              type="link" 
-              icon={<EditOutlined />}
-              onClick={() => handleEdit(record)}
-            >
-              Edit
-            </Button>
-            <Popconfirm
-              title="Are you sure to delete this meeting?"
-              onConfirm={() => handleDelete(record)}
-              okText="Yes"
-              cancelText="No"
-            >
+            {record.can_edit && (
               <Button 
                 type="link" 
-                danger
-                icon={<DeleteOutlined />}
+                icon={<EditOutlined />}
+                onClick={() => handleEdit(record)}
               >
-                Delete
+                Edit
               </Button>
-            </Popconfirm>
+            )}
+            {record.can_delete && (
+              <Popconfirm
+                title="Are you sure to delete this meeting?"
+                onConfirm={() => handleDelete(record)}
+                okText="Yes"
+                cancelText="No"
+              >
+                <Button 
+                  type="link" 
+                  danger
+                  icon={<DeleteOutlined />}
+                >
+                  Delete
+                </Button>
+              </Popconfirm>
+            )}
           </Space>
         );
       },

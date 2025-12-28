@@ -1,12 +1,6 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import ToolboxTalkViewSet, user_search, user_list, submit_attendance, deployed_workers, create_toolbox_talk
+from django.urls import path
+from .views import ToolboxTalkViewSet, user_search, user_list, submit_attendance, trained_personnel, create_toolbox_talk
 
-# Create a router and register our viewset with it
-router = DefaultRouter()
-router.register(r'', ToolboxTalkViewSet, basename='toolboxtalk')
-
-# The API URLs are determined automatically by the router
 urlpatterns = [
     # User endpoints for dropdown
     path('users/list/', user_list, name='user-list'),
@@ -16,7 +10,7 @@ urlpatterns = [
     path('attendance/', submit_attendance, name='submit-attendance'),
 
     # Worker endpoints
-    path('deployed-workers/', deployed_workers, name='deployed-workers'),
+    path('trained-personnel/', trained_personnel, name='trained-personnel'),
     
     # Toolbox talk endpoints
     path('list/', ToolboxTalkViewSet.as_view({'get': 'list'}), name='toolboxtalk-list'),
@@ -25,7 +19,4 @@ urlpatterns = [
     path('delete/<int:pk>/', ToolboxTalkViewSet.as_view({'delete': 'destroy'}), name='toolboxtalk-delete'),
     path('<int:pk>/', ToolboxTalkViewSet.as_view({'get': 'retrieve'}), name='toolboxtalk-detail'),
     path('<int:pk>/attendance/', ToolboxTalkViewSet.as_view({'get': 'attendance'}), name='toolboxtalk-attendance'),
-    
-    # Include the router URLs at the end
-    path('', include(router.urls)),
 ]

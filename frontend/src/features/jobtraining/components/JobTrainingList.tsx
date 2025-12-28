@@ -31,6 +31,16 @@ const JobTrainingList: React.FC = () => {
   const django_user_type = useAuthStore((state) => state.django_user_type);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   
+  // Helper function to check if user can edit/delete
+  const canModifyRecord = (record: JobTrainingData) => {
+    // Project admin can always modify
+    if (django_user_type === 'projectadmin') {
+      return true;
+    }
+    // Creator can modify their own records
+    return record.created_by === userId;
+  };
+  
   // Permission control
   const { executeWithPermission, showPermissionModal, permissionRequest, closePermissionModal, onPermissionRequestSuccess } = usePermissionControl({
     onPermissionGranted: () => fetchJobTrainings()
@@ -64,6 +74,8 @@ const JobTrainingList: React.FC = () => {
           location: jt.location,
           conducted_by: jt.conducted_by,
           status: jt.status,
+          created_by: jt.created_by,
+          created_by_username: jt.created_by_username,
           created_at: jt.created_at,
           updated_at: jt.updated_at
         }));
@@ -352,7 +364,7 @@ const JobTrainingList: React.FC = () => {
             </Tooltip>
           )}
           
-          {record.status !== 'completed' && (
+          {record.status !== 'completed' && canModifyRecord(record) && (
             <Tooltip title="Edit">
               <Button 
                 type="text" 
@@ -362,14 +374,16 @@ const JobTrainingList: React.FC = () => {
             </Tooltip>
           )}
           
-          <Tooltip title="Delete">
-            <Button 
-              type="text" 
-              danger 
-              icon={<DeleteOutlined />} 
-              onClick={() => handleDelete(record)} 
-            />
-          </Tooltip>
+          {canModifyRecord(record) && (
+            <Tooltip title="Delete">
+              <Button 
+                type="text" 
+                danger 
+                icon={<DeleteOutlined />} 
+                onClick={() => handleDelete(record)} 
+              />
+            </Tooltip>
+          )}
         </Space>
       ),
     },
@@ -378,7 +392,10 @@ const JobTrainingList: React.FC = () => {
   return (
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Job Trainings</h2>
+        <div>
+          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>Job Training Management</h1>
+          <p style={{ margin: '4px 0 0 0', color: '#666', fontSize: '14px' }}>Manage and track job training sessions</p>
+        </div>
         <Button 
           type="primary" 
           icon={<PlusOutlined />} 

@@ -7,6 +7,8 @@ export interface JobTrainingData {
   location: string;
   conducted_by: string;
   status: 'planned' | 'completed' | 'cancelled';
+  created_by?: number;
+  created_by_username?: string;
   created_at: string;
   updated_at: string;
 }

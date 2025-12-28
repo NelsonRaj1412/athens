@@ -54,7 +54,7 @@ def compare_faces(known_image_path, unknown_image_file, tolerance=0.6) -> bool:
 
 def compare_faces_advanced(known_image_path, unknown_image_file, tolerance=0.6) -> bool:
     """
-    Advanced face recognition using face_recognition library
+    Advanced face recognition using confidence-based matching
     """
     try:
         # Load known image
@@ -75,32 +75,26 @@ def compare_faces_advanced(known_image_path, unknown_image_file, tolerance=0.6) 
         known_face_encodings = face_recognition.face_encodings(known_image)
         unknown_face_encodings = face_recognition.face_encodings(unknown_image)
 
-
         # Check if faces are detected in both images
-        if len(known_face_encodings) == 0:
-            return False
-
-        if len(unknown_face_encodings) == 0:
+        if len(known_face_encodings) == 0 or len(unknown_face_encodings) == 0:
             return False
 
         # Compare the first face in each image
         known_face_encoding = known_face_encodings[0]
         unknown_face_encoding = unknown_face_encodings[0]
 
-        # Compare faces using face_recognition library
-        matches = face_recognition.compare_faces([known_face_encoding], unknown_face_encoding, tolerance=tolerance)
+        # Calculate confidence and use 70% threshold
         face_distance = face_recognition.face_distance([known_face_encoding], unknown_face_encoding)[0]
-
+        confidence = max(0.0, 1.0 - face_distance)
+        
         # Log detailed results for debugging
         logger.info(f"Face Recognition Results:")
-        logger.info(f"  - Match result: {matches[0]}")
+        logger.info(f"  - Confidence: {confidence:.3f} ({confidence*100:.1f}%)")
         logger.info(f"  - Face distance: {face_distance:.3f}")
-        logger.info(f"  - Tolerance: {tolerance}")
         logger.info(f"  - Known image: {known_image_path}")
-
-
-        # Return True if faces match
-        return matches[0]
+        
+        # Accept if confidence >= 70%
+        return confidence >= 0.70
 
     except ImportError:
         return compare_faces_basic(known_image_path, unknown_image_file)
@@ -260,14 +254,11 @@ def check_in(request):
         unknown_image_file = BytesIO(photo.read())
         photo.seek(0)  # Reset file pointer after reading
 
-        # Use different tolerance based on user type
-        # AdminDetail photos (projectadmin) use stricter tolerance
-        # UserDetail photos (adminuser) use more lenient tolerance due to processing differences
-        tolerance = 0.5 if user.user_type == 'projectadmin' else 0.6
-        face_match = compare_faces(known_image_path, unknown_image_file, tolerance=tolerance)
+        # Use confidence-based matching (70% threshold)
+        face_match = compare_faces(known_image_path, unknown_image_file)
         if not face_match:
             return Response({
-                'error': 'Face Recognition Failed: Your face does not match with the photo in our database. Please ensure good lighting, face the camera directly, and try again. If the problem persists, contact administrator.'
+                'error': 'Face Recognition Failed: Your face does not match the stored profile photo. Please ensure proper lighting and face the camera directly.'
             }, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
@@ -369,14 +360,11 @@ def check_out(request):
         unknown_image_file = BytesIO(photo.read())
         photo.seek(0)  # Reset file pointer after reading
 
-        # Use different tolerance based on user type
-        # AdminDetail photos (projectadmin) use stricter tolerance
-        # UserDetail photos (adminuser) use more lenient tolerance due to processing differences
-        tolerance = 0.5 if user.user_type == 'projectadmin' else 0.6
-        face_match = compare_faces(known_image_path, unknown_image_file, tolerance=tolerance)
+        # Use confidence-based matching (70% threshold)
+        face_match = compare_faces(known_image_path, unknown_image_file)
         if not face_match:
             return Response({
-                'error': 'Face Recognition Failed: Your face does not match with the photo in our database. Please ensure good lighting, face the camera directly, and try again. If the problem persists, contact administrator.'
+                'error': 'Face Recognition Failed: Your face does not match the stored profile photo. Please ensure proper lighting and face the camera directly.'
             }, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:

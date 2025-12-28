@@ -12,6 +12,8 @@ import { antdTheme } from './common/theme/antdTheme';
 
 // Import the one, consolidated CSS file
 import './common/styles/global.css';
+// Import Ant Design Alert dual mode styles
+import './styles/ant-alert-dual-mode.css';
 
 // Development warning suppression for deprecated Antd warnings
 if (import.meta.env.DEV) {

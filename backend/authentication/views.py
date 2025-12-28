@@ -69,12 +69,12 @@ class UserDetailRetrieveUpdateView(generics.RetrieveUpdateAPIView):
             )
 
             # Send notification to admin if this is a new complete submission
-            if has_submitted_details and not user_detail.is_approved and self.request.user.created_by:
+            if has_submitted_details and not user_detail.is_approved and self.request.user.created_by and not getattr(user_detail, 'notification_sent', False):
                 try:
                     from .notification_utils import send_websocket_notification
                     send_websocket_notification(
                         user_id=self.request.user.created_by.id,
-                        title="New User Details Submitted",
+                        title="User Details Submitted",
                         message=f"{self.request.user.username} has submitted their user details for approval.",
                         notification_type="user_detail_submission",
                         data={
@@ -85,6 +85,9 @@ class UserDetailRetrieveUpdateView(generics.RetrieveUpdateAPIView):
                         },
                         sender_id=self.request.user.id
                     )
+                    # Mark notification as sent
+                    user_detail.notification_sent = True
+                    user_detail.save(update_fields=['notification_sent'])
                 except Exception as e:
                     logger.warning(f"Failed to send user detail submission notification: {sanitize_log_input(str(e))}")
 
@@ -1060,9 +1063,29 @@ class EPCAndClientUserListAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        users = CustomUser.objects.filter(admin_type__in=['epcuser', 'clientuser'], is_active=True)
+        # PROJECT ISOLATION: Only return users from the same project with induction training
+        if not request.user.project:
+            return Response({
+                'error': 'Project access required',
+                'message': 'User must be assigned to a project to access users.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        users = CustomUser.objects.filter(
+            admin_type__in=['epcuser', 'clientuser'], 
+            is_active=True,
+            project_id=request.user.project.id
+        )
+        
+        # Apply induction training filter
+        from authentication.project_isolation import apply_user_project_isolation_with_induction
+        users = apply_user_project_isolation_with_induction(users, request.user)
+        
         serializer = CustomUserSerializer(users, many=True)
-        return Response(serializer.data)
+        return Response({
+            'users': serializer.data,
+            'count': users.count(),
+            'message': 'Only induction-trained users from your project are shown'
+        })
 
 
 class AllAdminUsersListAPIView(APIView):
@@ -1081,6 +1104,13 @@ class AllAdminUsersListAPIView(APIView):
         department = request.query_params.get('department', None)
         is_active = request.query_params.get('is_active', 'true').lower() == 'true'
 
+        # PROJECT ISOLATION: Only return users from the same project
+        if not request.user.project:
+            return Response({
+                'error': 'Project access required',
+                'message': 'User must be assigned to a project to access users.'
+            }, status=status.HTTP_403_FORBIDDEN)
+
         # Base query for all admin users - include both project admins and admin users
         # Project admins: admin_type in ['client', 'epc', 'contractor'] with user_type='projectadmin'
         # Admin users: admin_type in ['clientuser', 'epcuser', 'contractoruser'] with user_type='adminuser'
@@ -1092,8 +1122,13 @@ class AllAdminUsersListAPIView(APIView):
                 admin_type__in=['client', 'epc', 'contractor'],
                 user_type='projectadmin'
             ),
-            is_active=is_active
+            is_active=is_active,
+            project_id=request.user.project.id  # PROJECT ISOLATION
         ).exclude(admin_type='master')  # Exclude master admin
+
+        # Apply induction training filter
+        from authentication.project_isolation import apply_user_project_isolation_with_induction
+        users = apply_user_project_isolation_with_induction(users, request.user)
 
         # Apply filters if provided
         if admin_type:
@@ -1116,6 +1151,9 @@ class AllAdminUsersListAPIView(APIView):
         response_data = {
             'users': serializer.data,
             'total_count': users.count(),
+            'message': 'Only induction-trained users from your project are shown',
+            'project_id': request.user.project.id,
+            'project_name': request.user.project.projectName,
             'summary': {
                 'clientuser_count': users.filter(admin_type='clientuser').count(),
                 'epcuser_count': users.filter(admin_type='epcuser').count(),
@@ -1184,16 +1222,36 @@ class ContractorUsersListAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        # PROJECT ISOLATION: Only return users from the same project with induction training
+        if not request.user.project:
+            return Response({
+                'error': 'Project access required',
+                'message': 'User must be assigned to a project to access users.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
         project_id = request.query_params.get('project_id', None)
 
-        users = CustomUser.objects.filter(admin_type='contractoruser', is_active=True)
+        users = CustomUser.objects.filter(
+            admin_type='contractoruser', 
+            is_active=True,
+            project_id=request.user.project.id  # Force same project
+        )
 
-        if project_id:
-            users = users.filter(project_id=project_id)
+        if project_id and project_id != str(request.user.project.id):
+            # Don't allow access to other projects
+            users = users.none()
+        
+        # Apply induction training filter
+        from authentication.project_isolation import apply_user_project_isolation_with_induction
+        users = apply_user_project_isolation_with_induction(users, request.user)
 
         users = users.order_by('company_name', 'name', 'username')
         serializer = CustomUserSerializer(users, many=True)
-        return Response(serializer.data)
+        return Response({
+            'users': serializer.data,
+            'count': users.count(),
+            'message': 'Only induction-trained contractor users from your project are shown'
+        })
 
 
 class UsersByTypeOverviewAPIView(APIView):
@@ -1482,14 +1540,14 @@ class AdminDetailUpdateView(APIView):
         )
 
         # Send notification to master admin if this is a new complete submission
-        if has_submitted_details and not admin_detail.is_approved:
+        if has_submitted_details and not admin_detail.is_approved and not getattr(admin_detail, 'notification_sent', False):
             try:
                 from .notification_utils import send_websocket_notification
                 master_admin = CustomUser.objects.filter(admin_type='master').first()
                 if master_admin:
                     send_websocket_notification(
                         user_id=master_admin.id,
-                        title="New Admin Details Submitted",
+                        title="Admin Details Submitted",
                         message=f"{user.username} ({user.admin_type}) has submitted their admin details for approval.",
                         notification_type="admin_detail_submission",
                         data={
@@ -1503,6 +1561,9 @@ class AdminDetailUpdateView(APIView):
                         },
                         sender_id=user.id
                     )
+                    # Mark notification as sent
+                    admin_detail.notification_sent = True
+                    admin_detail.save(update_fields=['notification_sent'])
             except Exception as e:
                 logger.warning(f"Failed to send admin detail submission notification: {sanitize_log_input(str(e))}")
 

@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.utils import timezone
 from .models import InductionTraining, InductionAttendance
 from .serializers import (
     InductionTrainingSerializer, 
@@ -70,6 +71,10 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
         # PROJECT ISOLATION: Ensure user has a project
         if not user.project:
             return InductionTraining.objects.none()
+        
+        # For master admin_type users, show all trainings
+        if hasattr(user, 'admin_type') and user.admin_type == 'master':
+            return InductionTraining.objects.all()
         
         # PROJECT ISOLATION: Return only induction trainings from the same project
         return InductionTraining.objects.filter(project=user.project)
@@ -171,6 +176,10 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
                         induction=induction,
                         worker_id=participant_id,
                         worker_name=record.get('worker_name') or record.get('name', f"{worker.name} {worker.surname}".strip()),
+                        worker_photo=record.get('worker_photo', ''),
+                        attendance_photo=record.get('attendance_photo', ''),
+                        participant_type='worker',
+                        match_score=record.get('match_score', 0),
                         status=record.get('status', 'present')
                     )
                     
@@ -189,6 +198,10 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
                         induction=induction,
                         worker_id=-participant_id,  # Negative ID for users
                         worker_name=record.get('worker_name') or record.get('name', user.get_full_name() or user.username),
+                        worker_photo=record.get('worker_photo', ''),
+                        attendance_photo=record.get('attendance_photo', ''),
+                        participant_type='user',
+                        match_score=record.get('match_score', 0),
                         status=record.get('status', 'present')
                     )
                     
@@ -208,8 +221,10 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
                 failed_records.append({'record': record, 'error': str(e)})
                 continue
         
-        # Update induction training status to completed
+        # Update induction training status to completed and save evidence photo
         induction.status = 'completed'
+        if evidence_photo:
+            induction.evidence_photo = evidence_photo
         induction.save()
         
         # PROJECT ISOLATION: Update employment status only for workers in the same project
@@ -435,6 +450,11 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
                     'message': 'User must be assigned to a project to access this data.'
                 }, status=status.HTTP_403_FORBIDDEN)
             
+            # Debug logging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Current user: {request.user.username}, Project: {request.user.project.projectName if request.user.project else 'None'} (ID: {request.user.project.id if request.user.project else 'None'})")
+            
             from worker.models import Worker
             from worker.serializers import WorkerSerializer
             from authentication.serializers import AdminUserCommonSerializer
@@ -464,16 +484,21 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
             # Convert negative IDs back to positive user IDs
             completed_user_ids = [-id for id in completed_user_ids]
             
-            # PROJECT ISOLATION: Get admin users only from the same project
+            # PROJECT ISOLATION: Get admin users only from the same project - STRICT FILTERING
             uninducted_users = User.objects.filter(
                 is_active=True,
                 user_type='adminuser',
-                project=request.user.project  # Same project as current user
+                project_id=request.user.project.id  # Use project_id for exact match
             ).exclude(
                 user_type__in=['master', 'projectadmin']  # Exclude master and project admins
             ).exclude(
                 id__in=completed_user_ids  # Exclude users who have completed induction
             ).select_related('project').order_by('username')
+            
+            # Debug logging
+            logger.info(f"Found {uninducted_users.count()} users in project {request.user.project.projectName}")
+            for user in uninducted_users[:3]:  # Log first 3 users
+                logger.info(f"  User: {user.username}, Project: {user.project.projectName if user.project else 'None'} (ID: {user.project.id if user.project else 'None'})")
 
             # Serialize workers
             worker_serializer = WorkerSerializer(uninducted_workers, many=True, context={'request': request})
@@ -550,20 +575,149 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
     
     def is_epc_safety_user(self, user):
         """Check if user belongs to EPC Safety Department"""
-        # Exclude master users and project admins from induction training
-        if (hasattr(user, 'user_type') and user.user_type in ['master', 'projectadmin']):
-            return False
-        
-        # Only EPC Safety Department users can access induction training
-        return (
-            hasattr(user, 'admin_type') and user.admin_type == 'epcuser' and
-            hasattr(user, 'department') and user.department and 
-            'safety' in user.department.lower()
-        )
+        # Allow master admin type users
+        if hasattr(user, 'admin_type') and user.admin_type == 'master':
+            return True
+            
+        # Allow EPC users
+        if hasattr(user, 'admin_type') and user.admin_type == 'epcuser':
+            return True
+            
+        return False
 
-    @action(detail=False, methods=['get'], url_path='list')
-    def list_inductions(self, request):
+    @action(detail=False, methods=['get'], url_path='test-new-endpoint')
+    def test_new_endpoint(self, request):
+        """Test endpoint to verify server is reloading properly"""
+        return Response({'message': 'Test endpoint working', 'timestamp': str(timezone.now())})
+
+    @action(detail=False, methods=['get'], url_path='trained-personnel')
+    def trained_personnel(self, request):
         """
-        Alias for the list action to support the /induction/list/ URL.
+        Get a dedicated list of all induction-trained personnel for tracking.
+        Returns both workers and users who have completed induction training.
         """
-        return self.list(request)
+        try:
+            # PROJECT ISOLATION: Ensure user has a project
+            if not request.user.project:
+                return Response({
+                    'error': 'Access denied',
+                    'message': 'User must be assigned to a project to access this data.'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            from worker.models import Worker
+            from worker.serializers import WorkerSerializer
+            from authentication.serializers import AdminUserCommonSerializer
+
+            # Get attendance records from completed inductions in current project
+            project_inductions = InductionTraining.objects.filter(
+                project=request.user.project,
+                status='completed'
+            )
+            
+            trained_attendance = InductionAttendance.objects.filter(
+                induction__in=project_inductions,
+                status='present'
+            ).select_related('induction').order_by('-induction__date', 'worker_name')
+
+            # Separate workers and users
+            worker_records = trained_attendance.filter(participant_type='worker', worker_id__gt=0)
+            user_records = trained_attendance.filter(participant_type='user', worker_id__lt=0)
+
+            # Get unique worker IDs and user IDs
+            trained_worker_ids = list(worker_records.values_list('worker_id', flat=True).distinct())
+            trained_user_ids = [-id for id in user_records.values_list('worker_id', flat=True).distinct()]
+
+            # Get worker details
+            trained_workers = Worker.objects.filter(
+                id__in=trained_worker_ids,
+                project=request.user.project
+            ).select_related('project', 'created_by')
+
+            # Get user details
+            trained_users = User.objects.filter(
+                id__in=trained_user_ids,
+                project=request.user.project
+            ).select_related('project')
+
+            # Prepare worker data with training details
+            workers_data = []
+            for worker in trained_workers:
+                # Get latest training record for this worker
+                latest_training = worker_records.filter(worker_id=worker.id).first()
+                worker_serializer = WorkerSerializer(worker, context={'request': request})
+                worker_data = worker_serializer.data
+                
+                # Add training information
+                if latest_training:
+                    worker_data.update({
+                        'training_date': latest_training.induction.date,
+                        'training_title': latest_training.induction.title,
+                        'training_location': latest_training.induction.location,
+                        'conducted_by': latest_training.induction.conducted_by,
+                        'match_score': latest_training.match_score,
+                        'attendance_photo': latest_training.attendance_photo,
+                        'participant_type': 'worker'
+                    })
+                
+                workers_data.append(worker_data)
+
+            # Prepare user data with training details (these are employees)
+            employees_data = []
+            # Prepare user data with training details (these are employees)
+            employees_data = []
+            for user in trained_users:
+                # Get latest training record for this user
+                latest_training = user_records.filter(worker_id=-user.id).first()
+                user_serializer = AdminUserCommonSerializer(user, context={'request': request})
+                user_data = user_serializer.data
+                
+                # Add training information
+                if latest_training:
+                    user_data.update({
+                        'training_date': latest_training.induction.date,
+                        'training_title': latest_training.induction.title,
+                        'training_location': latest_training.induction.location,
+                        'conducted_by': latest_training.induction.conducted_by,
+                        'match_score': latest_training.match_score,
+                        'attendance_photo': latest_training.attendance_photo,
+                        'participant_type': 'employee'  # Users are employees
+                    })
+                
+                # Add photo from user_detail if available
+                try:
+                    if hasattr(user, 'user_detail') and user.user_detail and user.user_detail.photo:
+                        photo_url = user.user_detail.photo.url
+                        if not photo_url.startswith('http'):
+                            user_data['photo'] = request.build_absolute_uri(photo_url)
+                        else:
+                            user_data['photo'] = photo_url
+                except:
+                    user_data['photo'] = None
+                
+                employees_data.append(user_data)
+
+            # Combine all trained personnel
+            all_trained = workers_data + employees_data
+            
+            # Sort by training date (most recent first)
+            all_trained.sort(key=lambda x: x.get('training_date', ''), reverse=True)
+
+            return Response({
+                'total_trained': len(all_trained),
+                'workers_trained': len(workers_data),
+                'employees_trained': len(employees_data),
+                'trained_personnel': all_trained,
+                'workers': workers_data,
+                'employees': employees_data,
+                'project_name': request.user.project.projectName,
+                'completed_trainings': project_inductions.count(),
+                'message': f'Found {len(all_trained)} trained personnel in {request.user.project.projectName}'
+            })
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {"error": f"Failed to fetch trained personnel: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

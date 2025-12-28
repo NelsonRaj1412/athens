@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.db.models import Count, Q, Avg
 from django.shortcuts import get_object_or_404
 import os
+from authentication.project_isolation import ProjectIsolationMixin, apply_project_isolation
 
 
 from .models import (
@@ -32,7 +33,7 @@ from .permissions import CanManageIncidents, CanManage8DProcessElements
 from permissions.decorators import require_permission
 
 
-class IncidentViewSet(viewsets.ModelViewSet):
+class IncidentViewSet(ProjectIsolationMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing incidents with comprehensive filtering and actions
     """
@@ -54,13 +55,11 @@ class IncidentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        user_project = getattr(user, 'project', None)
-
+        
         queryset = Incident.objects.all()
-
-        # Filter by user's project if applicable
-        if user_project:
-            queryset = queryset.filter(project=user_project)
+        
+        # Apply project isolation
+        queryset = apply_project_isolation(queryset, user)
 
         # Optimize queries with select_related and prefetch_related
         if self.action == 'list':
@@ -361,6 +360,44 @@ class IncidentViewSet(viewsets.ModelViewSet):
                 recipient=recipient,
                 message=f"Incident {incident.incident_id}: {notification_type.replace('_', ' ').title()}"
             )
+
+    @action(detail=False, methods=['get'], url_path='project-users')
+    def project_users(self, request):
+        """Get users from the same project for assignment dropdown (only induction-trained users)"""
+        user = request.user
+        
+        # PROJECT ISOLATION: Only return users from the same project
+        if not user.project:
+            return Response({
+                'error': 'Project access required',
+                'message': 'User must be assigned to a project to access project users.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get users from the same project using strict project isolation with induction training requirement
+        from authentication.project_isolation import apply_user_project_isolation_with_induction
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
+        project_users = apply_user_project_isolation_with_induction(
+            User.objects.filter(is_active=True).exclude(admin_type='master'),
+            user
+        ).values('id', 'username', 'name', 'surname')
+        
+        # Format for dropdown
+        users_list = []
+        for user_data in project_users:
+            display_name = f"{user_data['name']} {user_data['surname']}".strip() if user_data['name'] else user_data['username']
+            users_list.append({
+                'id': user_data['id'],
+                'username': user_data['username'],
+                'display_name': display_name
+            })
+        
+        return Response({
+            'users': users_list,
+            'count': len(users_list),
+            'message': 'Only induction-trained users are shown'
+        })
 
 
 class IncidentAttachmentViewSet(viewsets.ModelViewSet):

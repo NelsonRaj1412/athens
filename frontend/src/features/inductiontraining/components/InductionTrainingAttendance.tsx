@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Modal, Button, List, Avatar, App, Space, Input, Spin, Result, Typography, Tag, Empty } from 'antd';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Modal, Button, List, Avatar, App, Space, Input, Result, Typography, Tag, Empty } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined, CameraOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
-import Webcam from 'react-webcam';
 import styled from 'styled-components';
+import Webcam from 'react-webcam';
 import api from '@common/utils/axiosetup';
+import FaceCapture from '../../../components/FaceCapture';
 import type { InductionTrainingData, InductionTrainingAttendanceData } from '../types';
 import type { WorkerData } from '@features/worker/types';
 
@@ -97,18 +98,13 @@ const InductionTrainingAttendance: React.FC<InductionTrainingAttendanceProps> = 
   const [workers, setWorkers] = useState<WorkerData[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [cameraOpen, setCameraOpen] = useState<boolean>(false);
-  const [currentWorker, setCurrentWorker] = useState<WorkerData | null>(null);
-  const [photoSrc, setPhotoSrc] = useState<string | null>(null);
-  const [matchResult, setMatchResult] = useState<{ matched: boolean; score: number } | null>(null);
+  const [faceCapture, setFaceCapture] = useState<{ visible: boolean; worker: WorkerData | null }>({ visible: false, worker: null });
   const [attendanceList, setAttendanceList] = useState<InductionTrainingAttendanceData[]>([]);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [completed, setCompleted] = useState<boolean>(false);
   const [evidencePhotoSrc, setEvidencePhotoSrc] = useState<string | null>(null);
   const [evidenceCameraOpen, setEvidenceCameraOpen] = useState<boolean>(false);
   const [workerStatistics, setWorkerStatistics] = useState<any>(null);
-
-  const webcamRef = useRef<Webcam>(null);
   const evidenceWebcamRef = useRef<Webcam>(null);
 
   // --- Effects ---
@@ -172,96 +168,44 @@ const InductionTrainingAttendance: React.FC<InductionTrainingAttendanceProps> = 
   }, []);
 
   const handleCameraOpen = useCallback((worker: WorkerData) => {
-    console.log('Opening camera for worker:', {
-      name: worker.name,
-      surname: worker.surname,
-      photo: worker.photo,
-      photoExists: !!worker.photo,
-      photoType: typeof worker.photo,
-      photoLength: worker.photo?.length,
-      fullWorkerData: worker
-    });
-
-    // Test if the photo URL is accessible
-    if (worker.photo) {
-      fetch(worker.photo)
-        .then(response => {
-          console.log('Photo URL accessible:', response.ok);
-        })
-        .catch(error => {
-          console.log('Photo URL error:', error);
-        });
-    }
-
-    setCurrentWorker(worker);
-    setCameraOpen(true);
-    setPhotoSrc(null);
-    setMatchResult(null);
+    setFaceCapture({ visible: true, worker });
   }, []);
 
-  const handleCameraClose = useCallback(() => {
-    setCameraOpen(false);
-    setCurrentWorker(null);
-    setPhotoSrc(null);
-    setMatchResult(null);
-  }, []);
+  const handleFaceCapture = useCallback((result: { matched: boolean; score: number; photo: string }) => {
+    if (!faceCapture.worker) return;
+    
+    const newAttendance: InductionTrainingAttendanceData = {
+      id: 0, 
+      key: `temp-${faceCapture.worker.participant_id || faceCapture.worker.id}`,
+      induction_training_id: inductionTraining.id,
+      worker_id: faceCapture.worker.participant_id || faceCapture.worker.id,
+      participant_type: faceCapture.worker.participant_type || 'worker',
+      participant_id: faceCapture.worker.participant_id || faceCapture.worker.id,
+      worker_name: `${faceCapture.worker.name} ${faceCapture.worker.surname || ''}`.trim(),
+      worker_photo: faceCapture.worker.photo || '',
+      attendance_photo: result.photo,
+      match_score: result.score,
+      status: result.matched ? 'present' : 'absent',
+      timestamp: new Date().toISOString(),
+    };
+    
+    setAttendanceList(prev => [...prev.filter(a => (a.participant_id || a.worker_id) !== (faceCapture.worker!.participant_id || faceCapture.worker!.id)), newAttendance]);
+    setFaceCapture({ visible: false, worker: null });
+    message.success(`${faceCapture.worker.name} marked as ${result.matched ? 'present' : 'absent'}`);
+  }, [inductionTraining.id, faceCapture.worker, message]);
 
   const handleEvidenceCameraOpen = useCallback(() => setEvidenceCameraOpen(true), []);
   const handleEvidenceCameraClose = useCallback(() => setEvidenceCameraOpen(false), []);
 
-  const capturePhoto = useCallback(async () => {
-    if (!webcamRef.current) return;
-    const imageSrc = webcamRef.current.getScreenshot();
-    if (!imageSrc) return;
-
-    setPhotoSrc(imageSrc);
-    
-    if (currentWorker?.photo) {
-        try {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const simulatedScore = Math.floor(Math.random() * 31) + 70;
-            const matched = simulatedScore > 80;
-            setMatchResult({ matched, score: simulatedScore });
-            message.info(`Comparison complete. Confidence: ${simulatedScore}%`);
-        } catch (error) {
-            message.error('Failed to compare photos');
-            setMatchResult({ matched: false, score: 0 });
-        }
-    } else {
-        setMatchResult({ matched: true, score: 0 });
-        message.warning('No reference photo available. Marking present without verification.');
-    }
-  }, [currentWorker]);
-
   const captureEvidencePhoto = useCallback(() => {
-    if (!evidenceWebcamRef.current) return;
-    const imageSrc = evidenceWebcamRef.current.getScreenshot();
-    if (imageSrc) {
-      setEvidencePhotoSrc(imageSrc);
-      setEvidenceCameraOpen(false);
+    if (evidenceWebcamRef.current) {
+      const imageSrc = evidenceWebcamRef.current.getScreenshot();
+      if (imageSrc) {
+        setEvidencePhotoSrc(imageSrc);
+        setEvidenceCameraOpen(false);
+      }
     }
   }, []);
-
-  const markAttendance = useCallback((worker: WorkerData, present: boolean) => {
-    const newAttendance: InductionTrainingAttendanceData = {
-      id: 0, 
-      key: `temp-${worker.participant_id || worker.id}`,
-      induction_training_id: inductionTraining.id,
-      worker_id: worker.participant_id || worker.id,
-      participant_type: worker.participant_type || 'worker',
-      participant_id: worker.participant_id || worker.id,
-      worker_name: `${worker.name} ${worker.surname || ''}`.trim(),
-      worker_photo: worker.photo || '',
-      attendance_photo: photoSrc || '',
-      status: present ? 'present' : 'absent',
-      timestamp: new Date().toISOString(),
-      match_score: matchResult?.score || 0,
-    };
-    
-    setAttendanceList(prev => [...prev.filter(a => (a.participant_id || a.worker_id) !== (worker.participant_id || worker.id)), newAttendance]);
-    handleCameraClose();
-    message.success(`${worker.name} marked as ${present ? 'present' : 'absent'}`);
-  }, [inductionTraining.id, photoSrc, matchResult, handleCameraClose]);
 
   const handleSubmitAttendance = useCallback(async () => {
     if (attendanceList.length === 0) return message.error('Mark at least one worker.');
@@ -386,82 +330,15 @@ const InductionTrainingAttendance: React.FC<InductionTrainingAttendanceProps> = 
         </EvidenceSection>
       </AttendanceContainer>
 
-      {/* --- Modals --- */}
-      <Modal
-        open={cameraOpen}
-        title={`Verify: ${currentWorker?.name || 'Worker'}`}
-        onCancel={handleCameraClose}
-        footer={null}
-        width={650}
-        destroyOnClose
-      >
-        <WebcamContainer>
-          {!photoSrc ? (
-            <>
-              <Webcam audio={false} ref={webcamRef} screenshotFormat="image/jpeg" width={600} height={450} className="webcam-video" />
-              <Button key="capture" type="primary" onClick={capturePhoto} size="large">Capture Photo</Button>
-            </>
-          ) : (
-            <>
-              <ComparisonGrid>
-                <PhotoWrapper>
-                  <Title level={5}>Captured</Title>
-                  <img src={photoSrc} alt="Captured" />
-                </PhotoWrapper>
-                <PhotoWrapper>
-                  <Title level={5}>Reference</Title>
-                  {currentWorker?.photo ? (
-                    <>
-                      <img
-                        src={currentWorker.photo}
-                        alt="Reference"
-                        onError={(e) => {
-                          console.log('Image load error:', {
-                            url: currentWorker.photo,
-                            worker: `${currentWorker.name} ${currentWorker.surname}`,
-                            error: e
-                          });
-                          e.currentTarget.style.display = 'none';
-                          const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
-                          if (nextElement) {
-                            nextElement.style.display = 'flex';
-                          }
-                        }}
-                        onLoad={() => {
-                          // Worker photo loaded successfully
-                        }}
-                      />
-                      <div style={{ fontSize: '10px', color: '#666', marginTop: '4px' }}>
-                        URL: {currentWorker.photo}
-                      </div>
-                    </>
-                  ) : null}
-                  <div
-                    className="placeholder"
-                    style={{ display: currentWorker?.photo ? 'none' : 'flex' }}
-                  >
-                    <Text type="secondary">
-                      {currentWorker?.photo ? 'Loading...' : 'No Photo Available'}
-                    </Text>
-                  </div>
-                </PhotoWrapper>
-              </ComparisonGrid>
-              
-              {!matchResult ? <Spin tip="Comparing photos..." /> :
-                <Space direction="vertical" align="center" style={{ width: '100%' }}>
-                  <Title level={4}>Match Result: {matchResult.matched ? 'Success' : 'Failed'}</Title>
-                  <Text>Confidence Score: {matchResult.score}%</Text>
-                  <Space style={{ marginTop: 16 }}>
-                    <Button type="primary" icon={<CheckCircleOutlined />} onClick={() => currentWorker && markAttendance(currentWorker, true)} style={{backgroundColor: 'var(--ant-color-success)'}}>Mark Present</Button>
-                    <Button danger icon={<CloseCircleOutlined />} onClick={() => currentWorker && markAttendance(currentWorker, false)}>Mark Absent</Button>
-                    <Button onClick={() => setPhotoSrc(null)}>Retake</Button>
-                  </Space>
-                </Space>
-              }
-            </>
-          )}
-        </WebcamContainer>
-      </Modal>
+      {/* Face Capture Modal */}
+      <FaceCapture
+        visible={faceCapture.visible}
+        onClose={() => setFaceCapture({ visible: false, worker: null })}
+        onCapture={handleFaceCapture}
+        referencePhoto={faceCapture.worker?.photo}
+        title={`Verify: ${faceCapture.worker?.name || 'Worker'}`}
+        userName={`${faceCapture.worker?.name || ''} ${faceCapture.worker?.surname || ''}`.trim()}
+      />
 
       <Modal open={evidenceCameraOpen} title="Take Group Evidence Photo" onCancel={handleEvidenceCameraClose} footer={null} width={650} destroyOnClose>
         <WebcamContainer>

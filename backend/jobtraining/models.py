@@ -51,6 +51,11 @@ class JobTrainingAttendance(models.Model):
         ('absent', _('Absent')),
     )
     
+    PARTICIPANT_TYPE_CHOICES = (
+        ('worker', _('Worker')),
+        ('user', _('User')),
+    )
+    
     job_training = models.ForeignKey(
         JobTraining, 
         on_delete=models.CASCADE, 
@@ -59,17 +64,33 @@ class JobTrainingAttendance(models.Model):
     worker = models.ForeignKey(
         Worker, 
         on_delete=models.CASCADE, 
-        related_name='job_training_attendances'
+        related_name='job_training_attendances',
+        null=True,
+        blank=True
     )
+    # Fields for user attendance
+    user_id = models.IntegerField(_('User ID'), null=True, blank=True)
+    user_name = models.CharField(_('User Name'), max_length=255, blank=True)
+    participant_type = models.CharField(
+        _('Participant Type'), 
+        max_length=20, 
+        choices=PARTICIPANT_TYPE_CHOICES, 
+        default='worker'
+    )
+    
     status = models.CharField(_('Status'), max_length=20, choices=STATUS_CHOICES)
     attendance_photo = models.TextField(_('Attendance Photo'), blank=True)
     match_score = models.FloatField(_('Match Score'), default=0)
     timestamp = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
-        return f"{self.worker} - {self.job_training} - {self.status}"
+        if self.participant_type == 'worker' and self.worker:
+            return f"{self.worker} - {self.job_training} - {self.status}"
+        elif self.participant_type == 'user':
+            return f"{self.user_name} (User) - {self.job_training} - {self.status}"
+        return f"Unknown - {self.job_training} - {self.status}"
     
     class Meta:
         verbose_name = _('Job Training Attendance')
         verbose_name_plural = _('Job Training Attendances')
-        unique_together = ('job_training', 'worker')
+        # Remove unique constraint to allow both worker and user attendance

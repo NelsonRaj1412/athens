@@ -7,31 +7,38 @@ from .models import SafetyObservation, SafetyObservationFile
 from .serializers import SafetyObservationSerializer
 from .permissions import SafetyObservationPermission
 from permissions.decorators import require_permission
+from authentication.project_isolation import ProjectIsolationMixin, apply_project_isolation
 import logging
 
 logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
-class SafetyObservationViewSet(viewsets.ModelViewSet):
+class SafetyObservationViewSet(ProjectIsolationMixin, viewsets.ModelViewSet):
     serializer_class = SafetyObservationSerializer
     permission_classes = [IsAuthenticated, SafetyObservationPermission]
     lookup_field = 'observationID'
     model = SafetyObservation  # Required for permission decorator
 
     def get_queryset(self):
-        """PROJECT ISOLATION: Filter by user's project"""
+        """
+        STRICT PROJECT ISOLATION: Filter safety observations by user's project only
+        """
         user = self.request.user
         
         # Master admin sees all data
         if user.is_superuser or (hasattr(user, 'admin_type') and user.admin_type == 'master'):
             return SafetyObservation.objects.all().order_by('-created_at')
         
-        # PROJECT ISOLATION: Filter by user's project
+        # CRITICAL FIX: Ensure strict project isolation
         if not user.project:
+            # If user has no project, return empty queryset
             return SafetyObservation.objects.none()
         
-        return SafetyObservation.objects.filter(project=user.project).order_by('-created_at')
+        # Return ONLY observations from the user's specific project
+        return SafetyObservation.objects.filter(
+            project_id=user.project.id  # Use project_id for exact match
+        ).order_by('-created_at')
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -39,16 +46,22 @@ class SafetyObservationViewSet(viewsets.ModelViewSet):
         return context
 
     def perform_create(self, serializer):
-        """PROJECT ISOLATION: Auto-assign project on creation"""
+        """PROJECT ISOLATION: Auto-assign project on creation and ensure data persistence"""
         # PROJECT ISOLATION: Ensure user has a project
         if not self.request.user.project:
             from rest_framework.exceptions import ValidationError
             raise ValidationError("User must be assigned to a project to create safety observations.")
         
+        # Save with proper project assignment
         observation = serializer.save(
             created_by=self.request.user,
             project=self.request.user.project
         )
+        
+        # Ensure the observation is properly saved with all required fields
+        if not observation.project:
+            observation.project = self.request.user.project
+            observation.save()
 
         # Send assignment notification if someone is assigned
         if observation.correctiveActionAssignedTo:
@@ -448,7 +461,7 @@ class SafetyObservationViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='project-users')
     def project_users(self, request):
-        """Get users from the same project for assignment dropdown"""
+        """Get users from the same project for assignment dropdown (only induction-trained users)"""
         user = request.user
         
         # PROJECT ISOLATION: Only return users from the same project
@@ -458,11 +471,13 @@ class SafetyObservationViewSet(viewsets.ModelViewSet):
                 'message': 'User must be assigned to a project to access project users.'
             }, status=status.HTTP_403_FORBIDDEN)
         
-        # Get users from the same project
-        project_users = User.objects.filter(
-            project=user.project,
-            is_active=True
-        ).exclude(admin_type='master').values('id', 'username', 'name', 'surname')
+        # Get users from the same project using strict project isolation with induction training requirement
+        from authentication.project_isolation import apply_user_project_isolation_with_induction
+        
+        project_users = apply_user_project_isolation_with_induction(
+            User.objects.filter(is_active=True).exclude(admin_type='master'),
+            user
+        ).values('id', 'username', 'name', 'surname')
         
         # Format for dropdown
         users_list = []
@@ -475,5 +490,6 @@ class SafetyObservationViewSet(viewsets.ModelViewSet):
         
         return Response({
             'users': users_list,
-            'count': len(users_list)
+            'count': len(users_list),
+            'message': 'Only induction-trained users are shown'
         })

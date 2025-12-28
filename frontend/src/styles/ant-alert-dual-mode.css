@@ -1,0 +1,43 @@
+/* Ant Design Alert dual mode CSS overrides - FORCE OVERRIDE */
+
+/* Light mode - Black text - HIGHEST PRIORITY */
+.ant-alert {
+  color: #000000 !important;
+}
+
+.ant-alert *,
+.ant-alert .ant-alert-message,
+.ant-alert .ant-alert-description,
+.ant-alert .ant-alert-icon,
+.ant-alert span,
+.ant-alert div {
+  color: #000000 !important;
+}
+
+/* Dark mode - White text - HIGHEST PRIORITY */
+[data-theme="dark"] .ant-alert,
+.dark .ant-alert,
+html[data-theme="dark"] .ant-alert {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .ant-alert *,
+[data-theme="dark"] .ant-alert .ant-alert-message,
+[data-theme="dark"] .ant-alert .ant-alert-description,
+[data-theme="dark"] .ant-alert .ant-alert-icon,
+[data-theme="dark"] .ant-alert span,
+[data-theme="dark"] .ant-alert div,
+.dark .ant-alert *,
+.dark .ant-alert .ant-alert-message,
+.dark .ant-alert .ant-alert-description,
+.dark .ant-alert .ant-alert-icon,
+.dark .ant-alert span,
+.dark .ant-alert div,
+html[data-theme="dark"] .ant-alert *,
+html[data-theme="dark"] .ant-alert .ant-alert-message,
+html[data-theme="dark"] .ant-alert .ant-alert-description,
+html[data-theme="dark"] .ant-alert .ant-alert-icon,
+html[data-theme="dark"] .ant-alert span,
+html[data-theme="dark"] .ant-alert div {
+  color: #ffffff !important;
+}

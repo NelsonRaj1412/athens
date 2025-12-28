@@ -65,12 +65,20 @@ const MomEdit: React.FC = () => {
         const response = await api.get(`/api/v1/mom/${id}/`);
         const momData = response.data;
 
+        // Check if user has permission to edit
+        if (!momData.can_edit) {
+          message.error('You do not have permission to edit this meeting.');
+          navigate('/dashboard/mom');
+          return;
+        }
+
         console.log('MOM data loaded:', {
           id: momData.id,
           title: momData.title,
           participants: momData.participants,
           participants_ids: momData.participants_ids,
-          department: momData.department
+          department: momData.department,
+          can_edit: momData.can_edit
         });
 
         // Set form values

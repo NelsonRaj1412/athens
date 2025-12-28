@@ -19,6 +19,7 @@ import uuid
 from io import BytesIO
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, A4
+from authentication.project_isolation import ProjectIsolationMixin, apply_project_isolation
 try:
     import openpyxl
 except ImportError:
@@ -76,7 +77,7 @@ class WorkflowTemplateViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['permit_type', 'risk_level']
 
-class PermitViewSet(viewsets.ModelViewSet):
+class PermitViewSet(ProjectIsolationMixin, viewsets.ModelViewSet):
     queryset = Permit.objects.all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -88,6 +89,17 @@ class PermitViewSet(viewsets.ModelViewSet):
     
     def create(self, request, *args, **kwargs):
         print(f"DEBUG: Received data: {request.data}")
+        print(f"DEBUG: permit_type value: {request.data.get('permit_type')}, type: {type(request.data.get('permit_type'))}")
+        
+        # Check if permit types exist
+        from .models import PermitType
+        permit_types_count = PermitType.objects.count()
+        print(f"DEBUG: Total permit types in database: {permit_types_count}")
+        
+        if permit_types_count > 0:
+            available_types = list(PermitType.objects.values_list('id', 'name')[:10])
+            print(f"DEBUG: Available permit types: {available_types}")
+        
         serializer = self.get_serializer(data=request.data)
         print(f"DEBUG: Serializer validation: {serializer.is_valid()}")
         if not serializer.is_valid():
@@ -110,7 +122,6 @@ class PermitViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        user_project = getattr(user, 'project', None)
         
         queryset = Permit.objects.select_related(
             'permit_type', 'created_by'
@@ -119,10 +130,8 @@ class PermitViewSet(viewsets.ModelViewSet):
             'gas_readings', 'photos', 'signatures', 'approvals', 'audit_logs'
         )
 
-        if user_project:
-            queryset = queryset.filter(project=user_project)
-        
-        return queryset
+        # Apply project isolation
+        return apply_project_isolation(queryset, user)
 
     def perform_create(self, serializer):
         user_project = getattr(self.request.user, 'project', None)
@@ -555,16 +564,18 @@ class PermitViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def available_approvers(self, request):
-        """Get available approvers based on hierarchical rules"""
+        """Get available approvers based on hierarchical rules (only induction-trained users)"""
         user = request.user
         user_project = getattr(user, 'project', None)
         current_user_type = user.admin_type
         current_user_grade = user.grade
         
-        # Hierarchical approval rules
-        approvers = CustomUser.objects.filter(
-            project=user_project,
-            is_active=True
+        # Get induction-trained users from the same project
+        from authentication.project_isolation import apply_user_project_isolation_with_induction
+        
+        approvers = apply_user_project_isolation_with_induction(
+            CustomUser.objects.filter(is_active=True),
+            user
         ).exclude(id=user.id)
         
         # Apply hierarchy filtering based on current user
@@ -619,7 +630,10 @@ class PermitViewSet(viewsets.ModelViewSet):
                 'grade': approver.grade
             })
         
-        return Response(approver_data)
+        return Response({
+            'approvers': approver_data,
+            'message': 'Only induction-trained users are shown'
+        })
     
     @action(detail=True, methods=['post'])
     def verify(self, request, pk=None):

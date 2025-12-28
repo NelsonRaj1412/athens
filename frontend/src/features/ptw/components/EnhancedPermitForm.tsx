@@ -597,7 +597,35 @@ const EnhancedPermitForm: React.FC = () => {
                     }
                   ]}
                 >
-                  <Input placeholder="Lat, Long (e.g., 40.7128,-74.0060)" />
+                  <Input 
+                    placeholder="Lat, Long (e.g., 40.7128,-74.0060)" 
+                    addonAfter={
+                      <Button 
+                        type="primary" 
+                        icon={<EnvironmentOutlined />}
+                        onClick={() => {
+                          if (navigator.geolocation) {
+                            navigator.geolocation.getCurrentPosition(
+                              (position) => {
+                                const { latitude, longitude } = position.coords;
+                                const coordinates = `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+                                form.setFieldValue('gps_coordinates', coordinates);
+                                message.success('Location fetched successfully');
+                              },
+                              (error) => {
+                                message.error('Failed to get location. Please enable location services.');
+                              },
+                              { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+                            );
+                          } else {
+                            message.error('Geolocation is not supported by this browser.');
+                          }
+                        }}
+                      >
+                        Get Location
+                      </Button>
+                    }
+                  />
                 </Form.Item>
               </Col>
             </Row>

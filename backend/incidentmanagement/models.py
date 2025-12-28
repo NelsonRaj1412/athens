@@ -472,7 +472,13 @@ class Incident(models.Model):
         if self.severity_level in ['high', 'critical'] and not hasattr(self, '_skip_escalation'):
             days_since_created = (timezone.now() - self.created_at).days if self.created_at else 0
             if days_since_created > 1 and self.escalation_level < 3:
+                old_escalation = self.escalation_level
                 self.escalation_level = min(self.escalation_level + 1, 5)
+                
+                # Restrict creator access on escalation
+                if old_escalation <= 1 and self.escalation_level > 1:
+                    from permissions.escalation import restrict_creator_access_on_escalation
+                    restrict_creator_access_on_escalation(self)
 
         super().save(*args, **kwargs)
 

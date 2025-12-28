@@ -38,7 +38,7 @@ urlpatterns = [
     path('api/v1/ptw/', include('ptw.urls')),  # Add this line for PTW app
     path('api/v1/incidentmanagement/', include('incidentmanagement.urls')),  # Add incident management URLs
     path('api/v1/inspection/', include('inspection.urls')),  # Inspection management URLs
-    path('api/v1/ai_bot/', include('ai_bot.urls')),  # AI Bot API endpoints
+    # path('api/v1/ai_bot/', include('ai_bot.urls')),  # AI Bot API endpoints - disabled
     path('api/v1/permissions/', include('permissions.urls')),  # Permission control system
     path('system/', include('system.urls')),  # System management
     path('api/v1/environment/', include('environment.urls')),  # ESG Environment management

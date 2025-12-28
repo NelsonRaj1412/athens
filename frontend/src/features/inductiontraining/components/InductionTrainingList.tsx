@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Table, Button, Space, Modal, App, Tag, Tooltip, Typography } from 'antd';
-import { EditOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, TeamOutlined, StopOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Modal, App, Tag, Tooltip, Typography, Tabs } from 'antd';
+import { EditOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, TeamOutlined, StopOutlined, UserOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import api from '@common/utils/axiosetup';
 import useAuthStore from '@common/store/authStore';
 import { usePermissionControl } from '../../../hooks/usePermissionControl';
 import PermissionRequestModal from '../../../components/permissions/PermissionRequestModal';
 import type { InductionTrainingData } from '../types';
-import { InductionTrainingView, InductionTrainingEdit, InductionTrainingCreation, InductionTrainingAttendance } from '..';
+import { InductionTrainingView, InductionTrainingEdit, InductionTrainingCreation, InductionTrainingAttendance, InductionTrainedPersonnelList } from '..';
 import PageLayout from '@common/components/PageLayout';
 
 const { Title, Text } = Typography;
@@ -57,11 +57,12 @@ const InductionTrainingList: React.FC = () => {
   const [conductingIT, setConductingIT] = useState<InductionTrainingData | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [activeTab, setActiveTab] = useState('trainings');
   
   const { usertype, userId, django_user_type, department } = useAuthStore();
   const hasPermission = ['clientuser', 'epcuser', 'contractoruser'].includes(usertype || '');
-  // Temporarily allow all EPC users - backend will handle the restriction
-  const isEpcSafetyUser = usertype === 'epcuser';
+  // Only EPC Safety Department users can access induction training
+  const isEpcSafetyUser = usertype === 'epcuser' && department && department.toLowerCase().includes('safety');
   
   // Debug logging
   console.log('Auth Store Values:', { usertype, department, isEpcSafetyUser });
@@ -82,7 +83,7 @@ const InductionTrainingList: React.FC = () => {
   const fetchInductionTrainings = useCallback(async (navigateToNewItem = false) => {
     setLoading(true);
     try {
-      const endpoint = hasPermission && isEpcSafetyUser ? `/induction/?created_by=${userId}` : '/induction/';
+      const endpoint = hasPermission && isEpcSafetyUser ? `/induction/manage/manage/?created_by=${userId}` : '/induction/manage/manage/';
       const response = await api.get(endpoint);
       console.log('Induction Training API Response:', response.data);
       
@@ -138,23 +139,23 @@ const InductionTrainingList: React.FC = () => {
           
           if (response.data.has_permission) {
             // User has permission, delete directly
-            await api.delete(`/induction/${id}/`);
+            await api.delete(`/induction/manage/manage/${id}/`);
           } else {
             // No permission, use permission flow
             await executeWithPermission(
-              () => api.delete(`/induction/${id}/`),
+              () => api.delete(`/induction/manage/manage/${id}/`),
               'delete induction training'
             );
           }
         } catch (permError) {
           // Fallback to permission flow
           await executeWithPermission(
-            () => api.delete(`/induction/${id}/`),
+            () => api.delete(`/induction/manage/manage/${id}/`),
             'delete induction training'
           );
         }
       } else {
-        await api.delete(`/induction/${id}/`);
+        await api.delete(`/induction/manage/manage/${id}/`);
       }
 
       // Update the state to remove the deleted item
@@ -198,7 +199,7 @@ const InductionTrainingList: React.FC = () => {
 
   const handleSaveNewIT = useCallback(async (newIT: any) => {
     try {
-      const response = await api.post('/induction/', newIT);
+      const response = await api.post('/induction/manage/manage/', newIT);
       console.log('Create Induction Training Response:', response.data);
 
       // Calculate which page the new induction training will be on (new items are added at the beginning)
@@ -236,7 +237,7 @@ const InductionTrainingList: React.FC = () => {
       } else {
         // No permission, trigger permission request flow
         executeWithPermission(
-          () => api.patch(`/induction/${it.id}/`, {}),
+          () => api.patch(`/induction/manage/manage/${it.id}/`, {}),
           'edit induction training'
         ).then(() => {
           setEditingIT(it);
@@ -248,7 +249,7 @@ const InductionTrainingList: React.FC = () => {
     } catch (error) {
       // Fallback to permission request flow
       executeWithPermission(
-        () => api.patch(`/induction/${it.id}/`, {}),
+        () => api.patch(`/induction/manage/manage/${it.id}/`, {}),
         'edit induction training'
       ).then(() => {
         setEditingIT(it);
@@ -261,7 +262,7 @@ const InductionTrainingList: React.FC = () => {
 
   const handleSaveEditedIT = useCallback(async (updatedIT: InductionTrainingData) => {
     try {
-      const response = await api.put(`/induction/${updatedIT.id}/`, updatedIT);
+      const response = await api.put(`/induction/manage/manage/${updatedIT.id}/`, updatedIT);
       setInductionTrainings(prev => prev.map(it => it.id === updatedIT.id ? { ...response.data, key: String(response.data.id) } : it));
       message.success('Training updated successfully');
       setEditingIT(null);
@@ -322,7 +323,7 @@ const InductionTrainingList: React.FC = () => {
           <Text type="secondary">
             {!hasPermission 
               ? 'Your user role does not have permission to view this page.' 
-              : 'Only EPC Safety Department users can access induction training management.'}
+              : 'Permission Denied. Your user role does not have permission to view this page.'}
           </Text>
         </PermissionDeniedContainer>
       </PageLayout>
@@ -338,34 +339,62 @@ const InductionTrainingList: React.FC = () => {
         { title: 'Induction Training' }
       ]}
       actions={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddingIT(true)}>
-          Add Training
-        </Button>
+        activeTab === 'trainings' ? (
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddingIT(true)}>
+            Add Training
+          </Button>
+        ) : null
       }
     >
       <PageContainer>
-        <ListCard>
-        
-        <Table
-          columns={columns}
-          dataSource={inductionTrainings}
-          loading={loading}
-          rowKey="key"
-          pagination={{
-            current: currentPage,
-            pageSize: pageSize,
-            total: inductionTrainings.length,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} induction trainings`,
-            position: ['bottomRight'],
-            onChange: handlePaginationChange,
-            onShowSizeChange: handlePaginationChange,
-            pageSizeOptions: ['10', '20', '50', '100'],
-          }}
-          scroll={{ x: 'max-content' }}
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={[
+            {
+              key: 'trainings',
+              label: (
+                <span>
+                  <TeamOutlined />
+                  Training Sessions
+                </span>
+              ),
+              children: (
+                <ListCard>
+                  <Table
+                    columns={columns}
+                    dataSource={inductionTrainings}
+                    loading={loading}
+                    rowKey="key"
+                    pagination={{
+                      current: currentPage,
+                      pageSize: pageSize,
+                      total: inductionTrainings.length,
+                      showSizeChanger: true,
+                      showQuickJumper: true,
+                      showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} induction trainings`,
+                      position: ['bottomRight'],
+                      onChange: handlePaginationChange,
+                      onShowSizeChange: handlePaginationChange,
+                      pageSizeOptions: ['10', '20', '50', '100'],
+                    }}
+                    scroll={{ x: 'max-content' }}
+                  />
+                </ListCard>
+              ),
+            },
+            {
+              key: 'personnel',
+              label: (
+                <span>
+                  <UserOutlined />
+                  Trained Personnel
+                </span>
+              ),
+              children: <InductionTrainedPersonnelList />,
+            },
+          ]}
         />
-      </ListCard>
 
       {/* --- Modals --- */}
       {viewingIT && <InductionTrainingView inductionTraining={viewingIT} visible={!!viewingIT} onClose={handleCancelModals} />}

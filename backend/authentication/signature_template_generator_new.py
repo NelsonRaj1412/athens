@@ -17,11 +17,12 @@ class SignatureTemplateGenerator:
     Generates digital signature templates with company branding
     """
     
-    def __init__(self):
-        self.template_width = 500
-        self.template_height = 220
-        self.logo_max_width = 120
-        self.logo_max_height = 80
+    def __init__(self, logo_opacity=0.5):
+        self.template_width = 400
+        self.template_height = 120
+        self.logo_max_width = 80
+        self.logo_max_height = 60
+        self.logo_opacity = logo_opacity  # Configurable logo transparency (0.0 to 1.0)
         
     def create_signature_template(self, user_detail):
         """
@@ -48,8 +49,8 @@ class SignatureTemplateGenerator:
         text_color = (0, 0, 0)  # Black text
         
         # User's full name
-        full_name = f"{user_detail.user.name or ''} {user_detail.user.surname or ''}".strip()
-        if not full_name:
+        full_name = f"{user_detail.user.name or user_detail.user.username} {user_detail.user.surname or ''}".strip()
+        if not full_name or full_name == user_detail.user.username:
             full_name = user_detail.user.username
         
         # Add company logo as background watermark (50% transparency)
@@ -63,10 +64,10 @@ class SignatureTemplateGenerator:
                     logo_size = min(self.logo_max_width, self.logo_max_height)
                     logo.thumbnail((logo_size, logo_size), Image.Resampling.LANCZOS)
                     
-                    # Create logo with 50% transparency
+                    # Create logo with configurable transparency
                     logo_rgba = logo.convert('RGBA')
                     alpha = logo_rgba.split()[-1]
-                    alpha = alpha.point(lambda p: int(p * 0.5))  # 50% opacity
+                    alpha = alpha.point(lambda p: int(p * self.logo_opacity))  # Configurable opacity
                     logo_rgba.putalpha(alpha)
                     
                     # Center logo as background
@@ -80,17 +81,32 @@ class SignatureTemplateGenerator:
         
         draw = ImageDraw.Draw(img)
         
-        # Adobe DSC-style layout
-        left_margin = 20
-        top_margin = 30
-        line_height = 20
+        # Adobe DSC-style layout to match frontend preview
+        left_margin = 12
+        top_margin = 20
+        line_height = 18
         
-        # Name (large, bold)
+        # Name (large, bold) - matches frontend .signer-name
         draw.text((left_margin, top_margin), full_name, font=name_font, fill=text_color)
         
-        # Right column for digital signature info
-        right_margin = self.template_width - 200
-        right_y = top_margin + 10
+        # Designation below name - matches frontend .signer-designation
+        if user_detail.user.designation:
+            designation_y = top_margin + 32
+            draw.text((left_margin, designation_y), user_detail.user.designation, font=detail_font, fill=(102, 102, 102))  # #666
+        
+        # Company name below designation - matches frontend .signer-company
+        company_name = self._get_company_name(user_detail.user)
+        if company_name:
+            company_y = top_margin + 52
+            draw.text((left_margin, company_y), company_name, font=detail_font, fill=(136, 136, 136))  # #888
+        
+        # Vertical divider line - matches frontend .signature-divider
+        divider_x = int(self.template_width * 0.55)
+        draw.line([(divider_x, top_margin), (divider_x, self.template_height - top_margin)], fill=(192, 192, 192), width=1)  # #c0c0c0
+        
+        # Right column for digital signature info - matches frontend layout
+        right_margin = divider_x + 16
+        right_y = top_margin + 8
         
         # "Digitally signed by"
         draw.text((right_margin, right_y), "Digitally signed by", font=detail_font, fill=text_color)
@@ -109,16 +125,11 @@ class SignatureTemplateGenerator:
             pass
             
         if employee_id:
-            draw.text((right_margin, right_y), f"ID: {employee_id}", font=detail_font, fill=text_color)
+            draw.text((right_margin, right_y), f"ID: {employee_id}", font=detail_font, fill=(51, 51, 51))  # #333
             right_y += line_height
         
         # Date placeholder
-        draw.text((right_margin, right_y), "Date: [TO_BE_FILLED]", font=detail_font, fill=text_color)
-        
-        # Designation if available
-        if user_detail.user.designation:
-            designation_y = self.template_height - 35
-            draw.text((left_margin, designation_y), user_detail.user.designation, font=detail_font, fill=text_color)
+        draw.text((right_margin, right_y), "Date: [TO_BE_FILLED]", font=detail_font, fill=(51, 51, 51))  # #333
         
         # Convert back to RGB
         img = img.convert('RGB')
@@ -186,10 +197,10 @@ class SignatureTemplateGenerator:
                 logo_size = min(self.logo_max_width, self.logo_max_height)
                 logo_img.thumbnail((logo_size, logo_size), Image.Resampling.LANCZOS)
                 
-                # Create logo with 50% transparency
+                # Create logo with configurable transparency
                 logo_rgba = logo_img.convert('RGBA')
                 alpha = logo_rgba.split()[-1]
-                alpha = alpha.point(lambda p: int(p * 0.5))  # 50% opacity
+                alpha = alpha.point(lambda p: int(p * self.logo_opacity))  # Configurable opacity
                 logo_rgba.putalpha(alpha)
                 
                 # Center logo as background
@@ -410,11 +421,15 @@ class SignatureTemplateGenerator:
         return ContentFile(img_io.getvalue(), name=filename)
 
 
-def create_user_signature_template(user_detail):
+def create_user_signature_template(user_detail, logo_opacity=0.5):
     """
     Convenience function to create signature template for a user
+    
+    Args:
+        user_detail: UserDetail instance
+        logo_opacity: Float between 0.0 and 1.0 for logo transparency (default: 0.5)
     """
-    generator = SignatureTemplateGenerator()
+    generator = SignatureTemplateGenerator(logo_opacity=logo_opacity)
 
     template_file, template_data = generator.create_signature_template(user_detail)
 
@@ -426,11 +441,15 @@ def create_user_signature_template(user_detail):
     return user_detail
 
 
-def create_admin_signature_template(admin_detail):
+def create_admin_signature_template(admin_detail, logo_opacity=0.5):
     """
     Convenience function to create signature template for an admin
+    
+    Args:
+        admin_detail: AdminDetail instance
+        logo_opacity: Float between 0.0 and 1.0 for logo transparency (default: 0.5)
     """
-    generator = SignatureTemplateGenerator()
+    generator = SignatureTemplateGenerator(logo_opacity=logo_opacity)
 
     template_file, template_data = generator.create_admin_signature_template(admin_detail)
 

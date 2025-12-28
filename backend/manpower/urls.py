@@ -10,6 +10,7 @@ from .views import (
     test_endpoint,
     debug_manpower_endpoint
 )
+from . import consolidated_views
 
 urlpatterns = [
     # Test endpoints
@@ -29,4 +30,8 @@ urlpatterns = [
     path('work-types/', WorkTypeView.as_view(), name='work-types'),
     path('daily-summary/', DailyManpowerSummaryView.as_view(), name='daily-summary'),
     path('dashboard-stats/', manpower_dashboard_stats, name='dashboard-stats'),
+    
+    # Consolidated attendance endpoints
+    path('consolidated-attendance/', consolidated_views.consolidated_attendance_view, name='consolidated-attendance'),
+    path('consolidated-summary/', consolidated_views.consolidated_attendance_summary, name='consolidated-summary'),
 ]

@@ -35,3 +35,9 @@ frontend/vite.config.js
 frontend/tsconfig.tsbuildinfo
 backend/staticfiles/
 .env
+# Google Drive Service Account Credentials
+gdrive-service-account.json
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json

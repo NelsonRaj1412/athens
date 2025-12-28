@@ -4,6 +4,7 @@ import { CameraOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
 import api from '../../../common/utils/axiosetup';
 import useAuthStore from '../../../common/store/authStore';
+import FaceCapture from '../../../components/FaceCapture';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
@@ -86,6 +87,7 @@ const SafetyObservationForm: React.FC<SafetyObservationFormProps> = ({
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [observationPhotos, setObservationPhotos] = useState<any[]>([]);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
+  const [faceCapture, setFaceCapture] = useState<{ visible: boolean; userPhoto?: string }>({ visible: false });
   const { message } = App.useApp();
   const { username, projectId } = useAuthStore();
   const params = useParams();
@@ -133,26 +135,54 @@ const SafetyObservationForm: React.FC<SafetyObservationFormProps> = ({
     }
   }, [initialData, isEditMode, form]);
 
-  // Fetch EPC users and contractors on component mount
+  // Fetch project users and contractors on component mount
   useEffect(() => {
     const fetchUsersAndContractors = async () => {
-
       setLoadingUsers(true);
       try {
-        // Fetch EPC users for corrective action assignment
-        const epcResponse = await api.get('/authentication/epcuser-list/');
-        setEpcUsers(epcResponse.data || []);
+        // Fetch project users for corrective action assignment (induction-trained users only)
+        const projectUsersResponse = await api.get('/api/v1/safetyobservation/project-users/');
+        const projectUsersData = projectUsersResponse.data;
+        
+        if (projectUsersData.users) {
+          setEpcUsers(projectUsersData.users.map((user: any) => ({
+            id: user.username,
+            username: user.username,
+            first_name: user.display_name.split(' ')[0] || user.username,
+            last_name: user.display_name.split(' ').slice(1).join(' ') || ''
+          })));
+        }
 
         // Fetch contractor users for contractor name dropdown
-        const contractorResponse = await api.get('/authentication/contractoruser-list/');
-
-        // Extract company names from contractor users
-        const contractorUsers = contractorResponse.data || [];
-        const companyNames = [...new Set(contractorUsers.map((user: any) => user.company_name).filter(Boolean))] as string[];
-        setContractors(companyNames);
+        try {
+          const contractorResponse = await api.get('/authentication/contractoruser-list/');
+          const contractorData = contractorResponse.data;
+          
+          if (contractorData && contractorData.users) {
+            const companyNames = [...new Set(contractorData.users.map((user: any) => user.company_name).filter(Boolean))] as string[];
+            setContractors(companyNames);
+          } else if (Array.isArray(contractorData)) {
+            const companyNames = [...new Set(contractorData.map((user: any) => user.company_name).filter(Boolean))] as string[];
+            setContractors(companyNames);
+          } else {
+            setContractors([]);
+          }
+        } catch (contractorError: any) {
+          console.warn('Could not load contractors:', contractorError);
+          setContractors([]);
+          // Only show error if it's not a permission/project issue
+          if (contractorError.response?.status !== 403) {
+            message.warning('Could not load contractor companies. This may be due to project access restrictions.');
+          }
+        }
 
       } catch (error: any) {
-        message.error('Failed to load users and contractors');
+        console.error('Error loading project users:', error);
+        if (error.response?.status === 403) {
+          message.error('Project access required. Please ensure you are assigned to a project.');
+        } else {
+          message.error('Failed to load project users');
+        }
       } finally {
         setLoadingUsers(false);
       }
@@ -623,6 +653,14 @@ const SafetyObservationForm: React.FC<SafetyObservationFormProps> = ({
         {/* Submit Button */}
         <Form.Item style={{ textAlign: 'center', marginTop: 32 }}>
           <Button
+            type="default"
+            size="large"
+            onClick={() => setFaceCapture({ visible: true })}
+            style={{ marginRight: 16 }}
+          >
+            Verify Identity
+          </Button>
+          <Button
             type="primary"
             htmlType="submit"
             size="large"
@@ -636,6 +674,21 @@ const SafetyObservationForm: React.FC<SafetyObservationFormProps> = ({
           </Button>
         </Form.Item>
       </Form>
+      
+      <FaceCapture
+        visible={faceCapture.visible}
+        onClose={() => setFaceCapture({ visible: false })}
+        onCapture={(result) => {
+          setFaceCapture({ visible: false });
+          if (result.matched) {
+            message.success('Identity verified successfully!');
+          } else {
+            message.warning('Identity verification failed, but you can still submit.');
+          }
+        }}
+        title="Verify Reporter Identity"
+        userName={username || 'User'}
+      />
     </Card>
   );
 };

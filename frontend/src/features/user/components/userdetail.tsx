@@ -302,10 +302,6 @@ const UserDetail: React.FC<UserDetailProps> = ({ initialMobile }) => {
         setApprovalSuccess(true);
         onApprovalSuccess?.(userToApprove.user);
       } else {
-        const createdById = response.data.created_by;
-        if (createdById) {
-          await sendNotification(String(createdById), { title: 'User Details Submitted', message: `${values.name || 'A user'} submitted details for approval.`, type: 'approval' as NotificationType, data: { userId: response.data.user, formType: 'userdetail' }, link: `/dashboard/profile` });
-        }
         message.success('Details submitted successfully for admin approval.');
         setFormSubmitted(true);
       }

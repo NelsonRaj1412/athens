@@ -536,24 +536,10 @@ const DashboardOverview: React.FC = () => {
                 type="primary" 
                 size="small" 
                 className="bg-orange-500 border-orange-500"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  navigate('/dashboard/alerts');
-                }}
+                onClick={() => navigate('/dashboard/alerts')}
               >
                 View All Alerts
               </Button>
-              <Button 
-                type="text" 
-                size="small" 
-                icon={<MoreOutlined />}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log('Alert details clicked');
-                }}
-              />
             </div>
           </div>
         </Card>
@@ -858,56 +844,28 @@ const DashboardOverview: React.FC = () => {
                             type="primary" 
                             block 
                             icon={<PlusOutlined />}
-                            onClick={() => {
-                              try {
-                                navigate('/dashboard/ptw');
-                              } catch (error) {
-                                console.error('Navigation error:', error);
-                                window.location.href = '/dashboard/ptw';
-                              }
-                            }}
+                            onClick={() => navigate('/dashboard/ptw/create')}
                         >
                             New Permit
                         </Button>
                         <Button 
                             block 
                             icon={<SafetyOutlined />}
-                            onClick={() => {
-                              try {
-                                navigate('/dashboard/safetyobservation');
-                              } catch (error) {
-                                console.error('Navigation error:', error);
-                                window.location.href = '/dashboard/safetyobservation';
-                              }
-                            }}
+                            onClick={() => navigate('/dashboard/safetyobservation/form')}
                         >
                             Safety Report
                         </Button>
                         <Button 
                             block 
                             icon={<AlertOutlined />}
-                            onClick={() => {
-                              try {
-                                navigate('/dashboard/incidentmanagement');
-                              } catch (error) {
-                                console.error('Navigation error:', error);
-                                window.location.href = '/dashboard/incidentmanagement';
-                              }
-                            }}
+                            onClick={() => navigate('/dashboard/incidentmanagement/create')}
                         >
                             Incident Report
                         </Button>
                         <Button 
                             block 
                             icon={<BarChartOutlined />}
-                            onClick={() => {
-                              try {
-                                navigate('/dashboard');
-                              } catch (error) {
-                                console.error('Navigation error:', error);
-                                window.location.href = '/dashboard';
-                              }
-                            }}
+                            onClick={() => navigate('/dashboard/analytics')}
                         >
                             View Analytics
                         </Button>

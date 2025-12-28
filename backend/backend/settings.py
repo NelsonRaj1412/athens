@@ -31,16 +31,13 @@ DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes', 'on')
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY')
 if not SECRET_KEY:
-    if DEBUG:
-        SECRET_KEY = 'dev-key-only-for-development'
-    else:
-        raise ValueError('SECRET_KEY environment variable must be set in production')
+    raise ValueError('SECRET_KEY environment variable must be set')
 
 # Production-ready allowed hosts configuration
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '72.60.218.167', 'prozeal.athenas.co.in']
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 # WebSocket allowed origins for Channels
-CHANNELS_ALLOWED_HOSTS = ['localhost', '127.0.0.1', '72.60.218.167', 'prozeal.athenas.co.in']
+CHANNELS_ALLOWED_HOSTS = os.getenv('CHANNELS_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 # ============================================================================
 # PRODUCTION SECURITY SETTINGS
@@ -105,7 +102,7 @@ INSTALLED_APPS = [
     'manpower',
     'incidentmanagement',  # Add the new incident management app
     'inspection',  # Inspection management app
-    'ai_bot',  # AI Bot service
+    # 'ai_bot',  # AI Bot service - disabled due to vector dependency
     'permissions',  # Permission control system
     'system',  # System management (settings, logs, backups)
     'environment',  # ESG Environment management
@@ -121,6 +118,7 @@ MIDDLEWARE = [
     # 'django.middleware.csrf.CsrfViewMiddleware',  # Disabled for API
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'authentication.middleware.ProjectIsolationMiddleware',  # Project isolation middleware
+    'authentication.induction_middleware.InductionTrainingMiddleware',  # Induction training access control
     'authentication.middleware.SecurityAuditMiddleware',  # Security audit middleware
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -163,28 +161,24 @@ CHANNEL_LAYERS = {
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Database Configuration - PostgreSQL
+# Database Configuration - Multiple databases
 db_engine = os.getenv('DB_ENGINE', 'sqlite3')
 
-if db_engine == 'postgresql':
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('DB_NAME', 'final'),
-            'USER': os.getenv('DB_USER', 'postgres'),
-            'PASSWORD': os.getenv('DB_PASSWORD'),
-            'HOST': os.getenv('DB_HOST', 'localhost'),
-            'PORT': os.getenv('DB_PORT', '5432'),
-        }
+# Primary database (PostgreSQL)
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('PG_DB_NAME', 'athens_ehs'),
+        'USER': os.getenv('PG_DB_USER', 'athens_user'),
+        'PASSWORD': os.getenv('PG_DB_PASSWORD'),
+        'HOST': os.getenv('PG_DB_HOST', 'localhost'),
+        'PORT': os.getenv('PG_DB_PORT', '5432'),
+    },
+    'sqlite_backup': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
-else:
-    # Fallback to SQLite
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+}
 
 
 # Password validation
@@ -210,7 +204,6 @@ AUTH_USER_MODEL = 'authentication.CustomUser'
 
 AUTHENTICATION_BACKENDS = [
     'authentication.backends.CustomAuthBackend',
-    'django.contrib.auth.backends.ModelBackend',
 ]
 
 # Internationalization
@@ -247,17 +240,11 @@ FRONTEND_BASE_URL = 'http://localhost:5173'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CORS settings - Explicit headers
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS settings - Environment configurable
+CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False').lower() in ('true', '1', 'yes', 'on')
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    'https://prozeal.athenas.co.in',
-    'http://72.60.218.167:3000',
-]
-CSRF_TRUSTED_ORIGINS = [
-    'https://prozeal.athenas.co.in',
-    'http://72.60.218.167:3000',
-]
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if os.getenv('CORS_ALLOWED_ORIGINS') else []
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if os.getenv('CSRF_TRUSTED_ORIGINS') else []
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding', 
@@ -423,6 +410,11 @@ GOOGLE_TRANSLATE_API_KEY = os.getenv('GOOGLE_TRANSLATE_API_KEY')
 # ============================================================================
 # CELERY CONFIGURATION
 # ============================================================================
+
+# Induction Training Enforcement
+# Set to True to enforce induction training requirements for user access
+# Set to False to allow all project users (gradual rollout)
+ENFORCE_INDUCTION_TRAINING = False  # Change to True when ready to enforce
 
 # Celery Configuration Options
 CELERY_BROKER_URL = 'redis://localhost:6379/0'

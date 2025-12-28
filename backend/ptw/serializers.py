@@ -425,7 +425,11 @@ class PermitCreateUpdateSerializer(serializers.ModelSerializer):
             try:
                 permit_type = PermitType.objects.get(id=int(value))
             except (PermitType.DoesNotExist, ValueError, TypeError):
-                raise serializers.ValidationError("Invalid permit type selected")
+                # Get available permit types for better error message
+                available_types = list(PermitType.objects.filter(is_active=True).values_list('id', 'name'))
+                raise serializers.ValidationError(
+                    f"Invalid permit type ID '{value}'. Available permit types: {available_types[:5]}..."
+                )
         
         if not permit_type.is_active:
             raise serializers.ValidationError("Selected permit type is not active")

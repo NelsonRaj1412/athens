@@ -33,9 +33,10 @@ const ToolboxTalkList: React.FC = () => {
   //   onPermissionGranted: () => fetchToolboxTalks()
   // });
 
-  // Check permissions based on usertype
+  // Check permissions based on usertype - allow admin users and project admins
   const hasPermission = usertype === 'clientuser' || usertype === 'epcuser' ||
-                        usertype === 'contractoruser';
+                        usertype === 'contractoruser' || usertype === 'projectadmin' ||
+                        usertype === 'adminuser' || usertype === 'masteradmin' || usertype === 'superadmin';
 
   // --- Pagination Logic ---
   const handlePaginationChange = useCallback((page: number, size: number) => {
@@ -52,6 +53,21 @@ const ToolboxTalkList: React.FC = () => {
       const response = await api.get(endpoint);
       if (Array.isArray(response.data)) {
         const fetchedTBTs: ToolboxTalkData[] = response.data.map((tbt: any) => ({
+          key: String(tbt.id),
+          id: tbt.id,
+          title: tbt.title,
+          description: tbt.description,
+          date: tbt.date,
+          location: tbt.location,
+          conducted_by: tbt.conducted_by,
+          status: tbt.status,
+          created_at: tbt.created_at,
+          updated_at: tbt.updated_at
+        }));
+        setToolboxTalks(fetchedTBTs);
+      } else if (response.data?.results && Array.isArray(response.data.results)) {
+        // Handle paginated response
+        const fetchedTBTs: ToolboxTalkData[] = response.data.results.map((tbt: any) => ({
           key: String(tbt.id),
           id: tbt.id,
           title: tbt.title,
