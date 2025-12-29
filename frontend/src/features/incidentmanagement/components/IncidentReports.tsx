@@ -3,6 +3,7 @@ import { Card, Row, Col, Select, DatePicker, Button, Table, Spin, Empty, Typogra
 import { DownloadOutlined, SearchOutlined, BarChartOutlined, FileTextOutlined, ReloadOutlined, SafetyOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { INCIDENT_TYPES, SEVERITY_LEVELS } from '../types';
+import api from '@common/utils/axiosetup';
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
@@ -48,8 +49,8 @@ const IncidentReports: React.FC = () => {
     setLoading(true);
     try {
       // Generate basic report from dashboard stats
-      const response = await fetch('/api/v1/incidentmanagement/incidents/dashboard_stats/');
-      const stats = await response.json();
+      const response = await api.get('/api/v1/incidentmanagement/incidents/dashboard_stats/');
+      const stats = response.data;
 
       // Create report data based on selected report type
       let reportData: any[] = [];

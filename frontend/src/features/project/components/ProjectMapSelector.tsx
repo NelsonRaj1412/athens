@@ -38,8 +38,8 @@ const MapEventsHandler: React.FC<Omit<ProjectMapSelectorProps, 'position'>> = ({
 
   const reverseGeocode = async (lat: number, lng: number) => {
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-      const data = await response.json();
+      const response = await api.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      const data = response.data;
       return data.display_name || `Lat: ${lat.toFixed(4)}, Lon: ${lng.toFixed(4)}`;
     } catch (error) {
       return `Lat: ${lat.toFixed(4)}, Lon: ${lng.toFixed(4)}`;

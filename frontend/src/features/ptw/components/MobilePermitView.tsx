@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Descriptions, Tag, Spin, Alert, Typography } from 'antd';
 import { useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
+import api from '@common/utils/axiosetup';
 
 const { Title, Text } = Typography;
 
@@ -30,13 +31,9 @@ const MobilePermitView: React.FC = () => {
   useEffect(() => {
     const fetchPermit = async () => {
       try {
-        const response = await fetch(`/api/ptw/mobile-permit/${permitId}/`);
-        if (response.ok) {
-          const data = await response.json();
-          setPermit(data);
-        } else {
-          setError('Failed to load permit details');
-        }
+        const response = await api.get(`/api/ptw/mobile-permit/${permitId}/`);
+        const data = response.data;
+        setPermit(data);
       } catch (err) {
         setError('Network error occurred');
       } finally {

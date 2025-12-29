@@ -6,6 +6,7 @@ import { EnvironmentOutlined, PlusOutlined } from '@ant-design/icons';
 import api from '@common/utils/axiosetup';
 import dayjs, { Dayjs } from 'dayjs';
 import PageLayout from '@common/components/PageLayout';
+import { ApiErrorHandler, ValidationRules, handleApiCall } from '../../../utils/apiErrorHandler';
 
 const ProjectMapSelector = lazy(() => import('./ProjectMapSelector'));
 const { Title, Text } = Typography;
@@ -143,8 +144,8 @@ const ProjectCreation: React.FC<ProjectCreationProps> = ({ onSuccess }) => {
       let fullAddress = '';
 
       try {
-        const osmResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`);
-        const osmData = await osmResponse.json();
+        const osmResponse = await api.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`);
+        const osmData = osmResponse.data;
 
         if (osmData.address) {
           const city = osmData.address.city || osmData.address.town || osmData.address.village || osmData.address.suburb || 'Unknown City';
@@ -227,29 +228,48 @@ const ProjectCreation: React.FC<ProjectCreationProps> = ({ onSuccess }) => {
     }
 
     const apiData = {
-      name: values.projectName,
+      name: values.projectName?.trim(),
       category: values.projectCategory,
-      capacity: values.capacity,
-      policeStation: values.nearestPoliceStation,
-      policeContact: values.nearestPoliceStationContact,
-      hospital: values.nearestHospital,
-      hospitalContact: values.nearestHospitalContact,
+      capacity: values.capacity?.trim(),
+      policeStation: values.nearestPoliceStation?.trim(),
+      policeContact: values.nearestPoliceStationContact?.trim(),
+      hospital: values.nearestHospital?.trim(),
+      hospitalContact: values.nearestHospitalContact?.trim(),
       commencementDate: values.commencementDate ? values.commencementDate.format('YYYY-MM-DD') : null,
       deadlineDate: values.deadlineDate.format('YYYY-MM-DD'), // Required field
-      location: values.location,
+      location: values.location?.trim(),
       latitude: finalPosition[0], // Send latitude as number
       longitude: finalPosition[1], // Send longitude as number
     };
 
+    // Validate required fields
+    const validation = ApiErrorHandler.validateRequiredFields(apiData, ValidationRules.projectCreation);
+    if (!validation.isValid) {
+      ApiErrorHandler.showValidationErrors(validation.missingFields);
+      return;
+    }
+
     setLoading(true);
     try {
-      await api.post('/authentication/master-admin/projects/create/', apiData);
+      const response = await handleApiCall(
+        () => api.post('/authentication/master-admin/projects/create/', apiData),
+        'Project Creation'
+      );
+
+      if (!response) {
+        return; // Error already handled
+      }
+
       message.success('Project created successfully!');
       form.resetFields();
       setPosition(null);
       if (onSuccess) onSuccess();
     } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || error.response?.data?.error || 'Failed to create project.';
+      // Fallback error handling
+      console.error('Project creation error:', error);
+      const errorMessage = error.response?.data?.detail || 
+                          error.response?.data?.error || 
+                          'Failed to create project.';
       message.error(errorMessage);
     } finally {
       setLoading(false);
@@ -334,8 +354,8 @@ const ProjectCreation: React.FC<ProjectCreationProps> = ({ onSuccess }) => {
                   onSearch={async (value) => {
                     if (!value) return;
                     try {
-                      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&q=${encodeURIComponent(value)}&limit=5`);
-                      const results = await response.json();
+                      const response = await api.get(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&q=${encodeURIComponent(value)}&limit=5`);
+                      const results = response.data;
                       if (results.length > 0) {
                         const loc = results[0];
                         const lat = parseFloat(loc.lat);

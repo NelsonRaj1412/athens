@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button, Select, Card, Typography, Space, Alert, Spin, Input } from 'antd';
 import { AudioOutlined, StopOutlined, SoundOutlined, EditOutlined } from '@ant-design/icons';
+import api from '@common/utils/axiosetup';
 
 // TypeScript declarations for Speech Recognition
 declare global {
@@ -145,24 +146,13 @@ const VoiceTranslator: React.FC = () => {
     setError('');
     
     try {
-      const response = await fetch('/api/translate/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text,
-          from: fromLanguage,
-          to: toLanguage,
-        }),
+      const response = await api.post('/api/translate/', {
+        text,
+        from: fromLanguage,
+        to: toLanguage,
       });
 
-      if (!response.ok) {
-        throw new Error('Translation failed');
-      }
-
-      const data = await response.json();
-      setTranslation(data.translatedText);
+      setTranslation(response.data.translatedText);
     } catch (err) {
       console.error('Translation error:', err);
       setError(`Translation failed: ${err.message}`);

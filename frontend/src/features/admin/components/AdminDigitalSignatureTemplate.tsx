@@ -199,7 +199,7 @@ const AdminDigitalSignatureTemplate: React.FC<AdminDigitalSignatureTemplateProps
             <div>
               <div>Please complete and submit the admin form above first.</div>
               <div style={{ marginTop: 4, fontSize: '12px', color: '#666' }}>
-                Missing: {missing_fields.join(', ')}
+                Missing: {missing_fields?.join(', ') || 'None'}
               </div>
             </div>
           }
@@ -214,10 +214,10 @@ const AdminDigitalSignatureTemplate: React.FC<AdminDigitalSignatureTemplateProps
       <div style={{ marginBottom: 16 }}>
         <Title level={5}>Template Information:</Title>
         <div style={{ background: '#fafafa', padding: 12, borderRadius: 6 }}>
-          <div><strong>Name:</strong> {user_data.full_name || 'Not provided'}</div>
-          {user_data.designation && <div><strong>Designation:</strong> {user_data.designation}</div>}
-          <div><strong>Company:</strong> {user_data.company_name || 'Not provided'}</div>
-          <div><strong>Company Logo:</strong> {user_data.has_company_logo ? '✓ Available' : '✗ Not available'}</div>
+          <div><strong>Name:</strong> {user_data?.full_name || 'Not provided'}</div>
+          {user_data?.designation && <div><strong>Designation:</strong> {user_data.designation}</div>}
+          <div><strong>Company:</strong> {user_data?.company_name || 'Not provided'}</div>
+          <div><strong>Company Logo:</strong> {user_data?.has_company_logo ? '✓ Available' : '✗ Not available'}</div>
         </div>
       </div>
 
@@ -289,12 +289,12 @@ const AdminDigitalSignatureTemplate: React.FC<AdminDigitalSignatureTemplateProps
               maxWidth: '100%'
             }}>
               <DigitalSignature 
-                signerName={user_data.full_name || 'Admin User'}
-                designation={user_data.designation}
-                companyName={user_data.company_name}
+                signerName={user_data?.full_name || 'Admin User'}
+                designation={user_data?.designation}
+                companyName={user_data?.company_name}
                 date={new Date().toLocaleDateString('en-CA')}
                 time={new Date().toLocaleTimeString('en-GB')}
-                logoUrl={user_data.logo_url}
+                logoUrl={user_data?.logo_url}
               />
             </div>
             <div style={{ marginTop: 16 }}>

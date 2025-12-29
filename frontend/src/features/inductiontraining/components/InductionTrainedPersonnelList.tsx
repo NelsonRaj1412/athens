@@ -61,7 +61,7 @@ const InductionTrainedPersonnelList: React.FC = () => {
   const fetchTrainedPersonnel = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.get('/induction/manage/manage/trained-personnel/');
+      const response = await api.get('/induction/api/trained-personnel/');
       console.log('Trained Personnel Response:', response.data);
       
       // Handle the response structure from the backend

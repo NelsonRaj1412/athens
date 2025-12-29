@@ -27,6 +27,7 @@ interface User {
   name: string;
   avatar?: string;
   django_user_type?: string;
+  last_message_time?: string;
 }
 
 interface Message {
@@ -230,16 +231,20 @@ const UnreadBadge = styled.div`
 `;
 
 const MessageStatus = styled.div<{ $status: string }>`
-  font-size: 10px;
+  font-size: 12px;
   color: ${({ $status }) => {
     switch ($status) {
-      case 'delivered': return 'var(--color-success)';
-      case 'read': return 'var(--color-primary)';
-      default: return 'var(--color-text-muted)';
+      case 'delivered': return '#9e9e9e';
+      case 'read': return '#4fc3f7';
+      default: return '#9e9e9e';
     }
   }};
   margin-top: 2px;
   text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1px;
 `;
 
 const ChatBox: React.FC = () => {
@@ -303,7 +308,7 @@ const ChatBox: React.FC = () => {
 
   }, []);
 
-  // Handle chat notifications for real-time message updates
+  // Handle chat notifications for real-time message updates and user reordering
   useEffect(() => {
     if (!chatNotifications || chatNotifications.length === 0) return;
 
@@ -314,6 +319,20 @@ const ChatBox: React.FC = () => {
     if (latestNotification.notification_type === 'chat_message' &&
         latestNotification.data.sender_id &&
         latestNotification.data.message_id) {
+
+      // Update user list order - move sender to top
+      if (latestNotification.data.sender_id !== currentUserId) {
+        setUsers(prevUsers => {
+          const updatedUsers = [...prevUsers];
+          const senderIndex = updatedUsers.findIndex(u => u.id === latestNotification.data.sender_id);
+          if (senderIndex > 0) {
+            const [sender] = updatedUsers.splice(senderIndex, 1);
+            sender.last_message_time = latestNotification.created_at;
+            updatedUsers.unshift(sender);
+          }
+          return updatedUsers;
+        });
+      }
 
       // If this message is for the currently selected conversation, add it to messages
       if ((latestNotification.data.sender_id === selectedUserId &&
@@ -349,7 +368,24 @@ const ChatBox: React.FC = () => {
       }
     }
   }, [chatNotifications, selectedUserId, currentUserId, messages, markMessagesAsRead]);
-  // Fetch users
+
+  // Handle message status updates from WebSocket
+  useEffect(() => {
+    if (!messageStatusUpdates || messageStatusUpdates.length === 0) return;
+
+    const latestUpdate = messageStatusUpdates[0];
+    if (!latestUpdate || !latestUpdate.message_id) return;
+
+    // Update message status in current conversation
+    if (latestUpdate.status === 'delivered' || latestUpdate.status === 'read') {
+      setMessages(prev => prev.map(msg => 
+        msg.id === latestUpdate.message_id 
+          ? { ...msg, status: latestUpdate.status }
+          : msg
+      ));
+    }
+  }, [messageStatusUpdates]);
+  // Fetch users with enhanced sorting
   useEffect(() => {
     const fetchUsers = async (retryCount = 0) => {
       try {
@@ -363,22 +399,40 @@ const ChatBox: React.FC = () => {
             id: user.id,
             name: user.name || user.username || 'Unknown User',
             avatar: user.photo || user.avatar,
-            django_user_type: user.admin_type
+            django_user_type: user.admin_type,
+            last_message_time: user.last_message_time
           }));
         } else if (response.data && response.data.results) {
           fetchedUsers = response.data.results.map((user: any) => ({
             id: user.id,
             name: user.name || user.username || 'Unknown User',
             avatar: user.photo || user.avatar,
-            django_user_type: user.admin_type
+            django_user_type: user.admin_type,
+            last_message_time: user.last_message_time
           }));
         }
         
         const filteredUsers = fetchedUsers.filter(user => String(user.id) !== String(currentUserId));
-        setUsers(filteredUsers);
+        
+        // Sort users: unread messages first, then by last message time
+        const sortedUsers = filteredUsers.sort((a, b) => {
+          const aUnread = unreadCounts[a.id] || 0;
+          const bUnread = unreadCounts[b.id] || 0;
+          
+          // Users with unread messages come first
+          if (aUnread > 0 && bUnread === 0) return -1;
+          if (bUnread > 0 && aUnread === 0) return 1;
+          
+          // Then sort by last message time (most recent first)
+          const aTime = a.last_message_time ? new Date(a.last_message_time).getTime() : 0;
+          const bTime = b.last_message_time ? new Date(b.last_message_time).getTime() : 0;
+          return bTime - aTime;
+        });
+        
+        setUsers(sortedUsers);
 
-        if (filteredUsers.length > 0 && !selectedUserId) {
-          setSelectedUserId(filteredUsers[0].id);
+        if (sortedUsers.length > 0 && !selectedUserId) {
+          setSelectedUserId(sortedUsers[0].id);
         }
       } catch (error: any) {
         console.error('Failed to load users:', error);
@@ -400,7 +454,7 @@ const ChatBox: React.FC = () => {
       console.log('User type not supported for chat:', usertype);
       setUsers([]);
     }
-  }, [usertype, currentUserId, selectedUserId]);
+  }, [usertype, currentUserId, selectedUserId, unreadCounts]);
   // Handle user selection
   const handleUserClick = (userId: number) => {
     if (userId !== selectedUserId) {
@@ -539,7 +593,8 @@ const ChatBox: React.FC = () => {
       const newMessage: Message = {
         ...response.data,
         timestamp: new Date(response.data.timestamp),
-        notification_status: response.data.notification_status
+        notification_status: response.data.notification_status,
+        status: 'sent'
       };
 
       setMessages(prev => [...prev, newMessage]);
@@ -778,9 +833,31 @@ const ChatBox: React.FC = () => {
                 </Timestamp>
                 {isCurrentUser && msg.status && (
                   <MessageStatus $status={msg.status}>
-                    {msg.status === 'sent' && '✓'}
-                    {msg.status === 'delivered' && '✓✓'}
-                    {msg.status === 'read' && '✓✓'}
+                    {msg.status === 'sent' && (
+                      <svg width="12" height="12" viewBox="0 0 16 15" fill="currentColor">
+                        <path d="M10.91 3.316l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
+                      </svg>
+                    )}
+                    {msg.status === 'delivered' && (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 16 15" fill="currentColor">
+                          <path d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-1.91-2.143a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l2.258 2.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
+                        </svg>
+                        <svg width="12" height="12" viewBox="0 0 16 15" fill="currentColor" style={{marginLeft: '-6px'}}>
+                          <path d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-1.91-2.143a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l2.258 2.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
+                        </svg>
+                      </>
+                    )}
+                    {msg.status === 'read' && (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 16 15" fill="currentColor">
+                          <path d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-1.91-2.143a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l2.258 2.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
+                        </svg>
+                        <svg width="12" height="12" viewBox="0 0 16 15" fill="currentColor" style={{marginLeft: '-6px'}}>
+                          <path d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-1.91-2.143a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l2.258 2.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
+                        </svg>
+                      </>
+                    )}
                   </MessageStatus>
                 )}
               </MessageBubble>

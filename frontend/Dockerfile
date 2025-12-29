@@ -31,7 +31,10 @@ RUN npm ci --only=production --legacy-peer-deps && npm cache clean --force
 # ============================================================================
 # Stage 3: Development Dependencies
 # ============================================================================
-FROM dependencies as dev-dependencies
+FROM base as dev-dependencies
+
+# Copy package files
+COPY package*.json ./
 
 # Install all dependencies (including dev)
 RUN npm ci --legacy-peer-deps && npm cache clean --force

@@ -5,6 +5,7 @@ import styled from 'styled-components';
 import api from '../../../common/utils/axiosetup';
 import useAuthStore from '../../../common/store/authStore';
 import type { UserData } from '../types';
+import { ApiErrorHandler, ValidationRules, handleApiCall } from '../../../utils/apiErrorHandler';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -108,13 +109,39 @@ const UserCreation: React.FC<UserCreationProps> = ({ onFinish, projectId, compan
 
   const handleFormSubmit = useCallback(async (values: UserCreationData) => {
     setLoading(true);
+    
     try {
-      const payload: any = { ...values, user_type: 'adminuser' };
-      if (projectId) {
-        payload.project = projectId;
+      // Prepare payload with proper data types and required fields
+      const payload = {
+        username: values.username?.trim(),
+        email: values.email?.trim(),
+        name: values.name?.trim(),
+        surname: values.surname?.trim(),
+        department: values.department,
+        designation: values.designation,
+        grade: values.grade,
+        phone_number: values.phone_number?.trim(),
+        user_type: 'adminuser',
+        company_name: values.company_name || companyName,
+        ...(projectId && { project: projectId })
+      };
+
+      // Validate required fields
+      const validation = ApiErrorHandler.validateRequiredFields(payload, ValidationRules.userCreation);
+      if (!validation.isValid) {
+        ApiErrorHandler.showValidationErrors(validation.missingFields);
+        return;
       }
-      
-      const response = await api.post('/authentication/projectadminuser/create/', payload);
+
+      const response = await handleApiCall(
+        () => api.post('/authentication/projectadminuser/create/', payload),
+        'User Creation',
+      );
+
+      if (!response) {
+        return; // Error already handled by ApiErrorHandler
+      }
+
       const createdUser: UserData = response.data;
 
       // Handle password download
@@ -130,6 +157,7 @@ const UserCreation: React.FC<UserCreationProps> = ({ onFinish, projectId, compan
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        message.success('User created successfully and credentials downloaded.');
       } else {
         message.warning('User created, but backend did not provide a password for download.');
       }
@@ -137,14 +165,17 @@ const UserCreation: React.FC<UserCreationProps> = ({ onFinish, projectId, compan
       // Call the parent's onFinish callback
       onFinish(createdUser);
 
-      // Do not reset form here, the parent component will close the modal which destroys the form.
     } catch (error: any) {
-      const errorMessage = error.response?.data?.email?.[0] || 'Failed to create user. Please check the details.';
+      // Fallback error handling if ApiErrorHandler doesn't catch it
+      console.error('User creation error:', error);
+      const errorMessage = error.response?.data?.email?.[0] || 
+                          error.response?.data?.detail || 
+                          'Failed to create user. Please check the details.';
       message.error(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [projectId, onFinish]);
+  }, [projectId, onFinish, companyName, message]);
 
   // --- Render ---
   return (

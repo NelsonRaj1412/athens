@@ -51,6 +51,7 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
   const comparePhotos = async (capturedPhoto: string, refPhoto: string) => {
     setComparing(true);
     try {
+      // Convert base64 data URL to blob
       const response = await fetch(capturedPhoto);
       const blob = await response.blob();
       

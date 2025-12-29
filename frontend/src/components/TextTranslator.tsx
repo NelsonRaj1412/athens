@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Select, Card, Typography, Space, Alert, Input, Spin } from 'antd';
 import { SoundOutlined, SwapOutlined, TranslationOutlined } from '@ant-design/icons';
+import api from '@common/utils/axiosetup';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -40,24 +41,13 @@ const TextTranslator: React.FC = () => {
     setError('');
     
     try {
-      const response = await fetch('/api/translate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text,
-          from: fromLanguage,
-          to: toLanguage,
-        }),
+      const response = await api.post('/api/translate', {
+        text,
+        from: fromLanguage,
+        to: toLanguage,
       });
 
-      if (!response.ok) {
-        throw new Error('Translation failed');
-      }
-
-      const data = await response.json();
-      setTranslation(data.translatedText);
+      setTranslation(response.data.translatedText);
     } catch (err) {
       setError('Translation failed. Please check your internet connection.');
       console.error('Translation error:', err);

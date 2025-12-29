@@ -41,23 +41,80 @@ def find_user_by_department(department, project):
     except Exception:
         return None
 
-@api_view(['GET', 'POST'])
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import InductionTrainingViewSet
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from .auto_signature_views import auto_signature_request, complete_attendance_and_request_signatures
+from .comprehensive_views import comprehensive_induction_endpoint
+
+# Create router for ViewSet
+router = DefaultRouter()
+router.register(r'api', InductionTrainingViewSet, basename='induction-api')
+
+def get_user_signature_url(user):
+    """Get signature URL for a user from their AdminDetail or UserDetail"""
+    try:
+        # Try AdminDetail first (for admin users)
+        if hasattr(user, 'admin_detail') and user.admin_detail and user.admin_detail.signature_template:
+            return user.admin_detail.signature_template.url
+        # Try UserDetail (for regular users)
+        elif hasattr(user, 'user_detail') and user.user_detail and user.user_detail.signature_template:
+            return user.user_detail.signature_template.url
+        return ''
+    except Exception:
+        return ''
+
+def find_user_by_department(department, project):
+    """Find EPC user by department in the given project"""
+    try:
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
+        user = User.objects.filter(
+            project=project,
+            department=department,
+            admin_type='epc',
+            is_active=True
+        ).first()
+        return user
+    except Exception:
+        return None
+
+@api_view(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
-def manage_manage_endpoint(request):
-    """Handle the specific /manage/manage/ endpoint that frontend expects"""
+def manage_endpoint(request, pk=None):
+    """Handle all operations for the /manage/ endpoint"""
     try:
         viewset = InductionTrainingViewSet()
         viewset.request = request
         viewset.format_kwarg = None
         
-        if request.method == 'GET':
-            viewset.action = 'list'
-            viewset.action_map = {'get': 'list'}
-            return viewset.list(request)
-        elif request.method == 'POST':
-            viewset.action = 'create'
-            viewset.action_map = {'post': 'create'}
-            return viewset.create(request)
+        if pk is None:
+            # List/Create operations
+            if request.method == 'GET':
+                viewset.action = 'list'
+                return viewset.list(request)
+            elif request.method == 'POST':
+                viewset.action = 'create'
+                return viewset.create(request)
+        else:
+            # Individual resource operations
+            if request.method == 'GET':
+                viewset.action = 'retrieve'
+                return viewset.retrieve(request, pk=pk)
+            elif request.method in ['PUT', 'PATCH']:
+                viewset.action = 'partial_update' if request.method == 'PATCH' else 'update'
+                return viewset.partial_update(request, pk=pk)
+            elif request.method == 'DELETE':
+                viewset.action = 'destroy'
+                return viewset.destroy(request, pk=pk)
+                
+        return Response({'error': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -380,5 +437,7 @@ urlpatterns = [
     path('<int:pk>/signatures/', signatures_view, name='induction-signatures'),
     path('<int:pk>/auto-signature/', auto_signature_request, name='auto-signature'),
     path('<int:pk>/complete-attendance/', complete_attendance_and_request_signatures, name='complete-attendance'),
-    path('manage/manage/', manage_manage_endpoint, name='manage-endpoint'),
+    path('manage/', manage_endpoint, name='manage-list'),
+    path('manage/<int:pk>/', manage_endpoint, name='manage-detail'),
+    path('manage/trained-personnel/', manage_endpoint, name='manage-trained-personnel'),
 ] + router.urls

@@ -63,6 +63,11 @@ class UserListView(APIView):
         # Ensure users have proper details for display
         users_data = []
         for user in users:
+            # Get last message time for this user
+            last_message = Message.objects.filter(
+                Q(sender=current_user, receiver=user) | Q(sender=user, receiver=current_user)
+            ).order_by('-timestamp').first()
+            
             user_data = {
                 'id': user.id,
                 'username': user.username,
@@ -72,7 +77,8 @@ class UserListView(APIView):
                 'company_name': getattr(user, 'company_name', ''),
                 'department': getattr(user, 'department', ''),
                 'designation': getattr(user, 'designation', ''),
-                'is_active': user.is_active
+                'is_active': user.is_active,
+                'last_message_time': last_message.timestamp.isoformat() if last_message else None
             }
             
             # Add photo if available

@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useWebSocket } from '@common/hooks/useWebSocket';
 import useAuthStore from '@common/store/authStore';
 import { message as antMessage } from 'antd';
+import api from '@common/utils/axiosetup';
 
 export interface ChatMessage {
   id: number;
@@ -164,75 +165,50 @@ export const useChatWebSocket = () => {
   // Send typing indicator
   const sendTypingIndicator = useCallback(async (otherUserId: number, isTyping: boolean) => {
     try {
-      const response = await fetch('/chatbox/typing-indicator/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          other_user_id: otherUserId,
-          is_typing: isTyping
-        })
+      await api.post('/chatbox/typing-indicator/', {
+        other_user_id: otherUserId,
+        is_typing: isTyping
       });
-      
-      if (!response.ok) {
-      }
     } catch (error) {
+      console.error('Failed to send typing indicator:', error);
     }
-  }, [accessToken]);
+  }, []);
 
   // Mark messages as read and send read receipts
   const markMessagesAsRead = useCallback(async (messageIds: number[]) => {
     try {
-      const response = await fetch('/chatbox/read-receipts/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          message_ids: messageIds
-        })
+      const response = await api.post('/chatbox/read-receipts/', {
+        message_ids: messageIds
       });
       
-      if (response.ok) {
-        const result = await response.json();
-        
-        // Clear unread counts for affected senders
-        // This would need message data to determine senders
-        return result;
-      }
+      // Clear unread counts for affected senders
+      // This would need message data to determine senders
+      return response.data;
     } catch (error) {
+      console.error('Failed to mark messages as read:', error);
     }
-  }, [accessToken]);
+  }, []);
 
   // Get chat notification summary
   const getChatNotificationSummary = useCallback(async () => {
     try {
-      const response = await fetch('/chatbox/notification-summary/', {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
+      const response = await api.get('/chatbox/notification-summary/');
+      const summary = response.data;
       
-      if (response.ok) {
-        const summary = await response.json();
-        
-        // Update unread counts from summary
-        if (summary.senders_summary) {
-          const newUnreadCounts: Record<number, number> = {};
-          Object.entries(summary.senders_summary).forEach(([senderId, data]: [string, any]) => {
-            newUnreadCounts[parseInt(senderId)] = data.unread_count;
-          });
-          setUnreadCounts(newUnreadCounts);
-        }
-        
-        return summary;
+      // Update unread counts from summary
+      if (summary.senders_summary) {
+        const newUnreadCounts: Record<number, number> = {};
+        Object.entries(summary.senders_summary).forEach(([senderId, data]: [string, any]) => {
+          newUnreadCounts[parseInt(senderId)] = data.unread_count;
+        });
+        setUnreadCounts(newUnreadCounts);
       }
+      
+      return summary;
     } catch (error) {
+      console.error('Failed to get chat notification summary:', error);
     }
-  }, [accessToken]);
+  }, []);
 
   // Clear unread count for a specific user
   const clearUnreadCount = useCallback((userId: number) => {

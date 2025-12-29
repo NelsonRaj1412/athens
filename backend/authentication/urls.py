@@ -7,6 +7,7 @@ from . import views_user_by_username
 from . import notification_views
 from . import views_admin_delete
 from . import digital_signature_views
+from . import signature_views
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import CustomTokenObtainPairView
 from .views_attendance import check_in, check_out, get_attendance_status
@@ -128,22 +129,8 @@ urlpatterns = [
     # Unified company data endpoint
     path('company-data/', views.UnifiedCompanyDataView.as_view(), name='unified_company_data'),
 
-    # Digital Signature Template endpoints (UserDetail) - COMMENTED OUT FOR NOW
-    # path('signature/template/create/', signature_views.SignatureTemplateCreateView.as_view(), name='signature_template_create'),
-    # path('signature/template/preview/', signature_views.SignatureTemplatePreviewView.as_view(), name='signature_template_preview'),
-    # path('signature/template/data/', signature_views.SignatureTemplateDataView.as_view(), name='signature_template_data'),
-    # path('signature/template/regenerate/', signature_views.RegenerateSignatureTemplateView.as_view(), name='signature_template_regenerate'),
-    # path('signature/generate/', signature_views.GenerateDocumentSignatureView.as_view(), name='generate_document_signature'),
-
-    # Admin Digital Signature Template endpoints (AdminDetail) - COMMENTED OUT FOR NOW
-    # path('admin/signature/template/create/', signature_views.AdminSignatureTemplateCreateView.as_view(), name='admin_signature_template_create'),
-    # path('admin/signature/template/preview/', signature_views.AdminSignatureTemplatePreviewView.as_view(), name='admin_signature_template_preview'),
-    # path('admin/signature/template/data/', signature_views.AdminSignatureTemplateDataView.as_view(), name='admin_signature_template_data'),
-    # path('admin/signature/template/regenerate/', signature_views.AdminRegenerateSignatureTemplateView.as_view(), name='admin_signature_template_regenerate'),
-
-    # Public Signature Template endpoints (for MOM participants) - COMMENTED OUT FOR NOW
-    # path('signature/template/by-user/', signature_views.UserSignatureTemplateByIdView.as_view(), name='user_signature_template_by_id'),
-    # path('admin/signature/template/by-user/', signature_views.AdminSignatureTemplateByIdView.as_view(), name='admin_signature_template_by_id'),
+    # Digital Signature Template endpoints (UserDetail)
+    path('signature/template/data/', signature_views.SignatureTemplateDataView.as_view(), name='signature_template_data'),
     
     # Team member selection endpoints
     path('api/', include(router.urls)),

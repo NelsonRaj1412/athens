@@ -205,16 +205,16 @@ const DigitalSignatureTemplate: React.FC<DigitalSignatureTemplateProps> = ({
         style={{ marginBottom: 16 }}
       >
         <Descriptions.Item label="Full Name">
-          {templateInfo.user_data.full_name || 'Not set'}
+          {templateInfo.user_data?.full_name || 'Not set'}
         </Descriptions.Item>
         <Descriptions.Item label="Designation">
-          {templateInfo.user_data.designation || 'Not set'}
+          {templateInfo.user_data?.designation || 'Not set'}
         </Descriptions.Item>
         <Descriptions.Item label="Company">
-          {templateInfo.user_data.company_name || 'Not set'}
+          {templateInfo.user_data?.company_name || 'Not set'}
         </Descriptions.Item>
         <Descriptions.Item label="Company Logo">
-          {templateInfo.user_data.has_company_logo ? 'Available' : 'Not available'}
+          {templateInfo.user_data?.has_company_logo ? 'Available' : 'Not available'}
         </Descriptions.Item>
       </Descriptions>
 
@@ -226,7 +226,7 @@ const DigitalSignatureTemplate: React.FC<DigitalSignatureTemplateProps> = ({
             <div>
               <Paragraph>Please complete the following information before creating a signature template:</Paragraph>
               <ul>
-                {templateInfo.missing_fields.map((field, index) => (
+                {templateInfo.missing_fields?.map((field, index) => (
                   <li key={index}>{field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</li>
                 ))}
               </ul>
@@ -302,12 +302,12 @@ const DigitalSignatureTemplate: React.FC<DigitalSignatureTemplateProps> = ({
               maxWidth: '100%'
             }}>
               <DigitalSignature 
-                signerName={templateInfo.user_data.full_name || 'User'}
-                designation={templateInfo.user_data.designation}
-                companyName={templateInfo.user_data.company_name}
+                signerName={templateInfo.user_data?.full_name || 'User'}
+                designation={templateInfo.user_data?.designation}
+                companyName={templateInfo.user_data?.company_name}
                 date={new Date().toLocaleDateString('en-CA')}
                 time={new Date().toLocaleTimeString('en-GB')}
-                logoUrl={templateInfo.user_data.logo_url}
+                logoUrl={templateInfo.user_data?.logo_url}
               />
             </div>
             <div style={{ marginTop: 16 }}>

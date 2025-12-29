@@ -85,7 +85,7 @@ const InductionTrainingList: React.FC = () => {
   const fetchInductionTrainings = useCallback(async (navigateToNewItem = false) => {
     setLoading(true);
     try {
-      const endpoint = hasPermission && isEpcSafetyUser ? `/induction/manage/manage/?created_by=${userId}` : '/induction/manage/manage/';
+      const endpoint = hasPermission && isEpcSafetyUser ? `/induction/manage/?created_by=${userId}` : '/induction/manage/';
       const response = await api.get(endpoint);
       console.log('Induction Training API Response:', response.data);
       
@@ -141,23 +141,23 @@ const InductionTrainingList: React.FC = () => {
           
           if (response.data.has_permission) {
             // User has permission, delete directly
-            await api.delete(`/induction/manage/manage/${id}/`);
+            await api.delete(`/induction/manage/${id}/`);
           } else {
             // No permission, use permission flow
             await executeWithPermission(
-              () => api.delete(`/induction/manage/manage/${id}/`),
+              () => api.delete(`/induction/manage/${id}/`),
               'delete induction training'
             );
           }
         } catch (permError) {
           // Fallback to permission flow
           await executeWithPermission(
-            () => api.delete(`/induction/manage/manage/${id}/`),
+            () => api.delete(`/induction/manage/${id}/`),
             'delete induction training'
           );
         }
       } else {
-        await api.delete(`/induction/manage/manage/${id}/`);
+        await api.delete(`/induction/manage/${id}/`);
       }
 
       // Update the state to remove the deleted item
@@ -201,7 +201,7 @@ const InductionTrainingList: React.FC = () => {
 
   const handleSaveNewIT = useCallback(async (newIT: any) => {
     try {
-      const response = await api.post('/induction/manage/manage/', newIT);
+      const response = await api.post('/induction/manage/', newIT);
       console.log('Create Induction Training Response:', response.data);
 
       // Calculate which page the new induction training will be on (new items are added at the beginning)
@@ -239,7 +239,7 @@ const InductionTrainingList: React.FC = () => {
       } else {
         // No permission, trigger permission request flow
         executeWithPermission(
-          () => api.patch(`/induction/manage/manage/${it.id}/`, {}),
+          () => api.patch(`/induction/manage/${it.id}/`, {}),
           'edit induction training'
         ).then(() => {
           setEditingIT(it);
@@ -251,7 +251,7 @@ const InductionTrainingList: React.FC = () => {
     } catch (error) {
       // Fallback to permission request flow
       executeWithPermission(
-        () => api.patch(`/induction/manage/manage/${it.id}/`, {}),
+        () => api.patch(`/induction/manage/${it.id}/`, {}),
         'edit induction training'
       ).then(() => {
         setEditingIT(it);
@@ -264,7 +264,7 @@ const InductionTrainingList: React.FC = () => {
 
   const handleSaveEditedIT = useCallback(async (updatedIT: InductionTrainingData) => {
     try {
-      const response = await api.put(`/induction/manage/manage/${updatedIT.id}/`, updatedIT);
+      const response = await api.put(`/induction/manage/${updatedIT.id}/`, updatedIT);
       setInductionTrainings(prev => prev.map(it => it.id === updatedIT.id ? { ...response.data, key: String(response.data.id) } : it));
       message.success('Training updated successfully');
       setEditingIT(null);

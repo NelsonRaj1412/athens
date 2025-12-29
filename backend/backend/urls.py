@@ -32,19 +32,18 @@ urlpatterns = [
     path('induction/', include('inductiontraining.urls')),
     path('jobtraining/', include('jobtraining.urls')),
     path('man/', include('manpower.urls')),
-    path('', RedirectView.as_view(url='/admin/', permanent=True)),
-    path('', include('mom.urls')),
+    path('mom/', include('mom.urls')),
     path('api/v1/safetyobservation/', include('safetyobservation.urls')),
-    path('api/v1/ptw/', include('ptw.urls')),  # Add this line for PTW app
-    path('api/v1/incidentmanagement/', include('incidentmanagement.urls')),  # Add incident management URLs
-    path('api/v1/inspection/', include('inspection.urls')),  # Inspection management URLs
-    # path('api/v1/ai_bot/', include('ai_bot.urls')),  # AI Bot API endpoints - disabled
-    path('api/v1/permissions/', include('permissions.urls')),  # Permission control system
-    path('system/', include('system.urls')),  # System management
-    path('api/v1/environment/', include('environment.urls')),  # ESG Environment management
-    path('api/v1/quality/', include('quality.urls')),  # Quality Management System
-    path('api/', include('voice_translator.urls')),  # Voice Translator API
-    path('api/', include('apps.translation.urls')),  # Translation API
+    path('api/v1/ptw/', include('ptw.urls')),
+    path('api/v1/incidentmanagement/', include('incidentmanagement.urls')),
+    path('api/v1/inspection/', include('inspection.urls')),
+    path('api/v1/permissions/', include('permissions.urls')),
+    path('system/', include('system.urls')),
+    path('api/v1/environment/', include('environment.urls')),
+    path('api/v1/quality/', include('quality.urls')),
+    path('api/v1/voice/', include('voice_translator.urls')),
+    path('api/v1/translation/', include('apps.translation.urls')),
+    path('', RedirectView.as_view(url='/admin/', permanent=True)),
 ]
 
 if settings.DEBUG:

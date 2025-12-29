@@ -58,6 +58,9 @@ COPY . .
 # Create necessary directories
 RUN mkdir -p /app/logs /app/media /app/staticfiles
 
+# Set dummy SECRET_KEY for collectstatic
+ENV SECRET_KEY=dummy_key_for_build
+
 # Collect static files
 RUN python manage.py collectstatic --noinput
 

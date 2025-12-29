@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Form, Input, Button, Select, App, Modal, Row, Col, Divider, Card, Typography, Space } from 'antd';
 import api from '@common/utils/axiosetup';
 import useAuthStore from '@common/store/authStore';
+import { ApiErrorHandler, handleApiCall } from '../../../utils/apiErrorHandler';
 // Removed import of useNavigate from react-router-dom
 import {
   UserOutlined,
@@ -283,11 +284,27 @@ const AdminCreation: React.FC = () => {
     try {
       const payload = {
         project_id: selectedProjectId,
-        [`${adminType}_username`]: adminData.username,
-        [`${adminType}_company`]: adminData.companyName,
-        [`${adminType}_residentAddress`]: adminData.registeredAddress,
+        [`${adminType}_username`]: adminData.username?.trim(),
+        [`${adminType}_company`]: adminData.companyName?.trim(),
+        [`${adminType}_residentAddress`]: adminData.registeredAddress?.trim(),
       };
-      const response = await api.post('/authentication/master-admin/projects/create-admins/', payload);
+
+      // Validate required fields
+      const requiredFields = ['project_id', `${adminType}_username`, `${adminType}_company`, `${adminType}_residentAddress`];
+      const validation = ApiErrorHandler.validateRequiredFields(payload, requiredFields);
+      if (!validation.isValid) {
+        ApiErrorHandler.showValidationErrors(validation.missingFields);
+        return;
+      }
+
+      const response = await handleApiCall(
+        () => api.post('/authentication/master-admin/projects/create-admins/', payload),
+        `${adminType.toUpperCase()} Admin Creation`
+      );
+
+      if (!response) {
+        return; // Error already handled
+      }
 
       // --- CORE LOGIC RESTORED: Extract password and trigger download ---
       let backendPassword: string | undefined;
@@ -319,7 +336,12 @@ const AdminCreation: React.FC = () => {
       await fetchAdminsForProject(selectedProjectId);
 
     } catch (error: any) {
-      message.error(`Failed to create ${adminType} admin: ${error.response?.data?.error || error.message}`);
+      // Fallback error handling
+      console.error(`${adminType} admin creation error:`, error);
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.detail || 
+                          `Failed to create ${adminType} admin`;
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }

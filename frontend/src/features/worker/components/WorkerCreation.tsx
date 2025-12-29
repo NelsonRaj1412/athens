@@ -128,6 +128,16 @@ const WorkerCreation: React.FC<WorkerCreationProps> = ({ onFinish }) => {
   const [availableDesignations, setAvailableDesignations] = useState<Array<{value: string, label: string}>>([]);
   const [aadhaarValidating, setAadhaarValidating] = useState(false);
 
+  // Initialize designations when department changes
+  useEffect(() => {
+    if (selectedDepartment) {
+      const designations = DESIGNATIONS_BY_DEPARTMENT[selectedDepartment] || [];
+      setAvailableDesignations(designations);
+    } else {
+      setAvailableDesignations([]);
+    }
+  }, [selectedDepartment]);
+
   const handleSameAddressChange = useCallback((e: any) => {
     const isChecked = e.target.checked;
     setSameAsPresent(isChecked);
@@ -135,6 +145,13 @@ const WorkerCreation: React.FC<WorkerCreationProps> = ({ onFinish }) => {
   }, [form]);
 
   const handleEducationChange = useCallback((value: string) => setShowOtherEducation(value === 'Other'), []);
+
+  const handleDepartmentChange = useCallback((value: string) => {
+    setSelectedDepartment(value);
+    const designations = DESIGNATIONS_BY_DEPARTMENT[value] || [];
+    setAvailableDesignations(designations);
+    form.setFieldsValue({ designation: undefined }); // Clear designation when department changes
+  }, [form]);
 
   // Function to check for duplicate Aadhaar number across ALL workers in the database
   const checkDuplicateAadhaar = useCallback(async (aadhaarNumber: string, showLoading: boolean = false) => {
@@ -303,7 +320,7 @@ const handleNumericInputChange = useCallback((fieldName: string) => (e: React.Ch
         
         <Section><SectionTitle level={4}><SolutionOutlined />Employment Details</SectionTitle>
              <Row gutter={16}>
-                <Col xs={24} sm={12}><Form.Item label="Employee ID" name="worker_id" rules={[{ required: true }]}><Input placeholder="Enter worker ID" /></Form.Item></Col>
+
                 <Col xs={24} sm={12}><Form.Item label="Date of Joining" name="date_of_joining" rules={[{ required: true }]}><DatePicker style={{ width: '100%' }} /></Form.Item></Col>
 <Col xs={24} sm={12}>
                   <Form.Item label="Department" name="department" rules={[{ required: true }]}>

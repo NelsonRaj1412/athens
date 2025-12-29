@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { message } from 'antd';
+import api from '@common/utils/axiosetup';
 
 interface OfflineData {
   id: string;
@@ -200,20 +201,13 @@ export const useOfflineSync = () => {
 
   const syncPermit = async (item: OfflineData): Promise<boolean> => {
     try {
-      const response = await fetch('/api/permits', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({
-          ...item.data,
-          offline_id: item.id,
-          sync_timestamp: new Date().toISOString()
-        })
+      const response = await api.post('/api/permits', {
+        ...item.data,
+        offline_id: item.id,
+        sync_timestamp: new Date().toISOString()
       });
 
-      return response.ok;
+      return response.status >= 200 && response.status < 300;
     } catch (error) {
       return false;
     }
@@ -221,20 +215,13 @@ export const useOfflineSync = () => {
 
   const syncApproval = async (item: OfflineData): Promise<boolean> => {
     try {
-      const response = await fetch(`/api/permits/${item.data.permitId}/approve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({
-          ...item.data,
-          offline_id: item.id,
-          sync_timestamp: new Date().toISOString()
-        })
+      const response = await api.post(`/api/permits/${item.data.permitId}/approve`, {
+        ...item.data,
+        offline_id: item.id,
+        sync_timestamp: new Date().toISOString()
       });
 
-      return response.ok;
+      return response.status >= 200 && response.status < 300;
     } catch (error) {
       return false;
     }
@@ -245,8 +232,8 @@ export const useOfflineSync = () => {
       const formData = new FormData();
       
       if (item.data.photo && item.data.photo.startsWith('data:')) {
-        const response = await fetch(item.data.photo);
-        const blob = await response.blob();
+        const response = await api.get(item.data.photo, { responseType: 'blob' });
+        const blob = response.data;
         formData.append('photo', blob, `photo_${item.id}.jpg`);
       }
       
@@ -254,15 +241,13 @@ export const useOfflineSync = () => {
       formData.append('offline_id', item.id);
       formData.append('sync_timestamp', new Date().toISOString());
 
-      const response = await fetch('/api/permits/photos', {
-        method: 'POST',
+      const response = await api.post('/api/permits/photos', formData, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: formData
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
-      return response.ok;
+      return response.status >= 200 && response.status < 300;
     } catch (error) {
       return false;
     }
@@ -270,20 +255,13 @@ export const useOfflineSync = () => {
 
   const syncSignature = async (item: OfflineData): Promise<boolean> => {
     try {
-      const response = await fetch('/api/permits/signatures', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({
-          ...item.data,
-          offline_id: item.id,
-          sync_timestamp: new Date().toISOString()
-        })
+      const response = await api.post('/api/permits/signatures', {
+        ...item.data,
+        offline_id: item.id,
+        sync_timestamp: new Date().toISOString()
       });
 
-      return response.ok;
+      return response.status >= 200 && response.status < 300;
     } catch (error) {
       return false;
     }

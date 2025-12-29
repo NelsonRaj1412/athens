@@ -102,8 +102,8 @@ export const downloadSignature = (signatureUrl: string, filename: string = 'sign
  * Utility function to convert signature URL to File object for form uploads
  */
 export const signatureUrlToFile = async (signatureUrl: string, filename: string = 'signature.png'): Promise<File> => {
-  const response = await fetch(signatureUrl);
-  const blob = await response.blob();
+  const response = await api.get(signatureUrl, { responseType: 'blob' });
+  const blob = response.data;
   return new File([blob], filename, { type: 'image/png' });
 };
 
