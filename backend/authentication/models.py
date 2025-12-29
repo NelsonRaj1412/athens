@@ -8,6 +8,7 @@ from django.dispatch import receiver
 from django.utils.html import escape
 from django.core.exceptions import ValidationError
 import logging
+import hashlib
 
 logger = logging.getLogger(__name__)
 
@@ -107,8 +108,6 @@ class CustomUserManager(BaseUserManager):
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     USER_TYPE_CHOICES = [
         ('master', 'Master'),
-        ('superadmin', 'Super Admin'),
-        ('masteradmin', 'Master Admin'),
         ('projectadmin', 'Project Admin'),
         ('adminuser', 'Admin User'),
     ]
@@ -365,3 +364,103 @@ def create_signature_template_on_admindetail_save(sender, instance, created, **k
         logger.error(f"Error creating admin signature template for {instance.user.username}: {e}")
         import traceback
         traceback.print_exc()
+
+
+# Digital Signature Models
+class UserSignature(models.Model):
+    """Store user's digital signature for reuse across forms"""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='digital_signature')
+    signature_image = models.ImageField(upload_to='signatures/digital/', help_text="User's digital signature image")
+    signature_data = models.TextField(help_text="Base64 signature data for backup")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Digital Signature - {self.user.get_full_name()}"
+
+
+class FormSignature(models.Model):
+    """Track signature usage in forms with integrity verification"""
+    FORM_TYPES = [
+        ('induction', 'Induction Training'),
+        ('ptw', 'Permit to Work'),
+        ('incident', 'Incident Report'),
+        ('safety_observation', 'Safety Observation'),
+        ('toolbox_talk', 'Toolbox Talk'),
+        ('mom', 'Minutes of Meeting'),
+    ]
+    
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    form_type = models.CharField(max_length=50, choices=FORM_TYPES)
+    form_id = models.PositiveIntegerField(help_text="ID of the signed form")
+    signature_hash = models.CharField(max_length=64, help_text="SHA256 hash for integrity")
+    signed_at = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(null=True, blank=True)
+    
+    class Meta:
+        unique_together = ['form_type', 'form_id', 'user']
+    
+    def save(self, *args, **kwargs):
+        if not self.signature_hash:
+            # Create integrity hash
+            data = f"{self.user.id}:{self.form_type}:{self.form_id}:{self.signed_at}"
+            self.signature_hash = hashlib.sha256(data.encode()).hexdigest()
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.user.get_full_name()} - {self.form_type} #{self.form_id}"
+
+
+class SignatureAuditLog(models.Model):
+    """Audit trail for signature operations"""
+    ACTION_TYPES = [
+        ('created', 'Signature Created'),
+        ('used', 'Signature Used'),
+        ('verified', 'Signature Verified'),
+        ('printed', 'Document Printed'),
+    ]
+    
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    action = models.CharField(max_length=20, choices=ACTION_TYPES)
+    form_signature = models.ForeignKey(FormSignature, on_delete=models.CASCADE, null=True, blank=True)
+    details = models.JSONField(default=dict)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"{self.user.get_full_name()} - {self.action} at {self.timestamp}"
+
+
+# Signature Request Models
+class SignatureRequest(models.Model):
+    """Signature approval requests with notifications"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    SIGNATURE_TYPES = [
+        ('trainer', 'Trainer'),
+        ('hr', 'HR Representative'),
+        ('safety', 'Safety Officer'),
+        ('dept_head', 'Department Head'),
+        ('worker', 'Worker Verification'),
+    ]
+    
+    form_type = models.CharField(max_length=50)
+    form_id = models.PositiveIntegerField()
+    signature_type = models.CharField(max_length=20, choices=SIGNATURE_TYPES)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='signature_requests_made')
+    requested_for = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='signature_requests_received', null=True, blank=True)
+    requested_for_name = models.CharField(max_length=255, help_text="Name of person to sign (for workers without accounts)")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        unique_together = ['form_type', 'form_id', 'signature_type']
+    
+    def __str__(self):
+        return f"{self.signature_type} signature request for {self.form_type} #{self.form_id}"

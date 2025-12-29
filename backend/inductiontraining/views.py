@@ -122,7 +122,67 @@ class InductionTrainingViewSet(viewsets.ModelViewSet):
 
     
     @action(detail=True, methods=['post', 'get'])
-    def attendance(self, request, pk=None):
+    def signatures(self, request, pk=None):
+        """
+        Manage digital signatures for induction training authorization
+        """
+        induction = self.get_object()
+        
+        if request.method == 'GET':
+            # Return current signature status
+            return Response({
+                'trainer_signature': bool(induction.trainer_signature),
+                'hr_signature': bool(induction.hr_signature),
+                'hr_name': induction.hr_name,
+                'hr_date': induction.hr_date,
+                'safety_signature': bool(induction.safety_signature),
+                'safety_name': induction.safety_name,
+                'safety_date': induction.safety_date,
+                'dept_head_signature': bool(induction.dept_head_signature),
+                'dept_head_name': induction.dept_head_name,
+                'dept_head_date': induction.dept_head_date,
+                'is_complete': induction.is_signatures_complete
+            })
+        
+        elif request.method == 'POST':
+            # Add or update signatures
+            signature_type = request.data.get('signature_type')
+            signature_data = request.data.get('signature_data')
+            signer_name = request.data.get('signer_name')
+            
+            if not all([signature_type, signature_data, signer_name]):
+                return Response({
+                    'error': 'signature_type, signature_data, and signer_name are required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Update signature based on type
+            current_date = timezone.now().date()
+            
+            if signature_type == 'trainer':
+                induction.trainer_signature = signature_data
+            elif signature_type == 'hr':
+                induction.hr_signature = signature_data
+                induction.hr_name = signer_name
+                induction.hr_date = current_date
+            elif signature_type == 'safety':
+                induction.safety_signature = signature_data
+                induction.safety_name = signer_name
+                induction.safety_date = current_date
+            elif signature_type == 'dept_head':
+                induction.dept_head_signature = signature_data
+                induction.dept_head_name = signer_name
+                induction.dept_head_date = current_date
+            else:
+                return Response({
+                    'error': 'Invalid signature_type. Must be: trainer, hr, safety, or dept_head'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            induction.save()
+            
+            return Response({
+                'message': f'{signature_type.title()} signature added successfully',
+                'is_complete': induction.is_signatures_complete
+            })
         """
         Submit attendance for an induction training and update worker employment status
         PROJECT-BOUNDED: Only allows attendance for inductions in the same project.

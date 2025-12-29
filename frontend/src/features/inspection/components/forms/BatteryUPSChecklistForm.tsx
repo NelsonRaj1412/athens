@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { SaveOutlined, DownloadOutlined } from "@ant-design/icons";
 import PageLayout from '@common/components/PageLayout';
 import { inspectionService } from '../../services/inspectionService';
+import BatteryUPSChecklistPrintPreview from '../BatteryUPSChecklistPrintPreview';
 
 const { Title } = Typography;
 
@@ -139,6 +140,7 @@ export default function BatteryUPSChecklistForm() {
   ];
 
   const headerActions = [
+    <BatteryUPSChecklistPrintPreview key="print-preview" formData={formData} />,
     <Button key="download" icon={<DownloadOutlined />} onClick={handleDownload}>
       Download
     </Button>,

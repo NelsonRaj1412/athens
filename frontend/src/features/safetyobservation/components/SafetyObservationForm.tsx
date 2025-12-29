@@ -653,14 +653,6 @@ const SafetyObservationForm: React.FC<SafetyObservationFormProps> = ({
         {/* Submit Button */}
         <Form.Item style={{ textAlign: 'center', marginTop: 32 }}>
           <Button
-            type="default"
-            size="large"
-            onClick={() => setFaceCapture({ visible: true })}
-            style={{ marginRight: 16 }}
-          >
-            Verify Identity
-          </Button>
-          <Button
             type="primary"
             htmlType="submit"
             size="large"

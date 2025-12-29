@@ -8,7 +8,9 @@ import { usePermissionControl } from '../../../hooks/usePermissionControl';
 import PermissionRequestModal from '../../../components/permissions/PermissionRequestModal';
 import type { InductionTrainingData } from '../types';
 import { InductionTrainingView, InductionTrainingEdit, InductionTrainingCreation, InductionTrainingAttendance, InductionTrainedPersonnelList } from '..';
+import InductionTrainingRecordPrintPreview from './InductionTrainingRecordPrintPreview';
 import PageLayout from '@common/components/PageLayout';
+import TrainingPrintPreview from '../../training/components/TrainingPrintPreview';
 
 const { Title, Text } = Typography;
 
@@ -294,6 +296,7 @@ const InductionTrainingList: React.FC = () => {
         <Space size="small">
           <Tooltip title="View Details"><Button shape="circle" icon={<EyeOutlined />} onClick={() => setViewingIT(record)} /></Tooltip>
           <Tooltip title="Edit"><Button shape="circle" icon={<EditOutlined />} onClick={() => handleEdit(record)} /></Tooltip>
+          <InductionTrainingRecordPrintPreview trainingData={record} />
           <Tooltip title="Delete">
             <Button
               shape="circle"
@@ -340,9 +343,12 @@ const InductionTrainingList: React.FC = () => {
       ]}
       actions={
         activeTab === 'trainings' ? (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddingIT(true)}>
-            Add Training
-          </Button>
+          <Space>
+            <TrainingPrintPreview />
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddingIT(true)}>
+              Add Training
+            </Button>
+          </Space>
         ) : null
       }
     >

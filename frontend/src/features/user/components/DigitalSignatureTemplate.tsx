@@ -57,14 +57,21 @@ const DigitalSignatureTemplate: React.FC<DigitalSignatureTemplateProps> = ({
   const fetchTemplateInfo = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/authentication/signature/template/data/');
+      // Add timestamp to prevent caching
+      const timestamp = Date.now();
+      const response = await api.get(`/authentication/signature/template/data/?t=${timestamp}`);
       setTemplateInfo(response.data);
       
-      // If template exists, fetch preview
+      // If template exists, fetch preview with cache busting
       if (response.data.has_existing_template) {
-        const previewResponse = await api.get('/authentication/signature/template/preview/');
+        const previewResponse = await api.get(`/authentication/signature/template/preview/?t=${timestamp}`);
         if (previewResponse.data.success) {
-          setTemplateUrl(previewResponse.data.template_url);
+          let templateUrl = previewResponse.data.template_url;
+          // Add cache busting to image URL
+          if (templateUrl) {
+            templateUrl += `?t=${timestamp}`;
+          }
+          setTemplateUrl(templateUrl);
         }
       }
     } catch (error: any) {
@@ -247,19 +254,8 @@ const DigitalSignatureTemplate: React.FC<DigitalSignatureTemplateProps> = ({
         </div>
       )}
 
-      {/* Action Buttons - Only show regenerate for existing templates */}
-      {templateInfo.has_existing_template && (
-        <Space style={{ width: '100%', justifyContent: 'center' }}>
-          <Button
-            type="default"
-            icon={<ReloadOutlined />}
-            loading={creating}
-            onClick={regenerateTemplate}
-          >
-            Regenerate Template
-          </Button>
-        </Space>
-      )}
+      {/* Action Buttons - Removed regenerate button */}
+      {/* Templates are automatically managed by the system */}
 
       {/* Information for users without templates */}
       {!templateInfo.has_existing_template && (

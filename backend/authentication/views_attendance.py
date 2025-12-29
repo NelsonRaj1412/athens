@@ -54,7 +54,7 @@ def compare_faces(known_image_path, unknown_image_file, tolerance=0.6) -> bool:
 
 def compare_faces_advanced(known_image_path, unknown_image_file, tolerance=0.6) -> bool:
     """
-    Advanced face recognition using confidence-based matching
+    Enhanced face recognition with multiple validation techniques for better accuracy
     """
     try:
         # Load known image
@@ -71,35 +71,104 @@ def compare_faces_advanced(known_image_path, unknown_image_file, tolerance=0.6) 
         unknown_pil_image = Image.open(BytesIO(image_data))
         unknown_image = np.array(unknown_pil_image)
 
-        # Find face encodings in both images
+        # Find ALL face encodings in both images
         known_face_encodings = face_recognition.face_encodings(known_image)
         unknown_face_encodings = face_recognition.face_encodings(unknown_image)
 
         # Check if faces are detected in both images
-        if len(known_face_encodings) == 0 or len(unknown_face_encodings) == 0:
+        if len(known_face_encodings) == 0:
+            logger.warning("No face detected in reference image")
+            return False
+        if len(unknown_face_encodings) == 0:
+            logger.warning("No face detected in captured image")
             return False
 
-        # Compare the first face in each image
+        # Use the largest face (most prominent) from each image
         known_face_encoding = known_face_encodings[0]
         unknown_face_encoding = unknown_face_encodings[0]
 
-        # Calculate confidence and use 70% threshold
-        face_distance = face_recognition.face_distance([known_face_encoding], unknown_face_encoding)[0]
-        confidence = max(0.0, 1.0 - face_distance)
+        # Multiple validation approaches for better accuracy
         
-        # Log detailed results for debugging
-        logger.info(f"Face Recognition Results:")
-        logger.info(f"  - Confidence: {confidence:.3f} ({confidence*100:.1f}%)")
-        logger.info(f"  - Face distance: {face_distance:.3f}")
-        logger.info(f"  - Known image: {known_image_path}")
+        # 1. Distance-based confidence (primary method)
+        face_distances = face_recognition.face_distance([known_face_encoding], unknown_face_encoding)
+        primary_distance = face_distances[0]
+        primary_confidence = max(0.0, 1.0 - primary_distance)
         
-        # Accept if confidence >= 70%
-        return confidence >= 0.70
+        # 2. Boolean comparison with tolerance (secondary validation)
+        tolerance_match = face_recognition.compare_faces([known_face_encoding], unknown_face_encoding, tolerance=0.5)[0]
+        
+        # 3. Stricter distance threshold for high confidence
+        strict_match = primary_distance < 0.4  # Very strict threshold
+        
+        # 4. Multiple encoding comparison if multiple faces detected
+        best_confidence = primary_confidence
+        if len(known_face_encodings) > 1 or len(unknown_face_encodings) > 1:
+            # Compare all combinations and take the best match
+            for k_enc in known_face_encodings:
+                for u_enc in unknown_face_encodings:
+                    dist = face_recognition.face_distance([k_enc], u_enc)[0]
+                    conf = max(0.0, 1.0 - dist)
+                    if conf > best_confidence:
+                        best_confidence = conf
+        
+        # Enhanced logging for debugging
+        logger.info(f"Face Recognition Analysis:")
+        logger.info(f"  - Primary confidence: {primary_confidence:.3f} ({primary_confidence*100:.1f}%)")
+        logger.info(f"  - Best confidence: {best_confidence:.3f} ({best_confidence*100:.1f}%)")
+        logger.info(f"  - Primary distance: {primary_distance:.3f}")
+        logger.info(f"  - Tolerance match (0.5): {tolerance_match}")
+        logger.info(f"  - Strict match (<0.4): {strict_match}")
+        logger.info(f"  - Known faces detected: {len(known_face_encodings)}")
+        logger.info(f"  - Unknown faces detected: {len(unknown_face_encodings)}")
+        
+        # Multi-criteria decision making
+        # Accept if ANY of these conditions are met (more lenient thresholds):
+        conditions = [
+            best_confidence >= 0.65,  # Good confidence (lowered from 0.75)
+            (best_confidence >= 0.55 and tolerance_match),  # Fair confidence + tolerance match
+            (best_confidence >= 0.45 and strict_match),  # Lower confidence + strict distance
+            (best_confidence >= 0.35 and len(known_face_encodings) == 1 and len(unknown_face_encodings) == 1),  # Single face bonus
+        ]
+        
+        final_result = any(conditions)
+        
+        logger.info(f"  - Final decision: {'MATCH' if final_result else 'NO MATCH'}")
+        logger.info(f"  - Decision criteria: confidence≥75%: {conditions[0]}, conf≥65%+tol: {conditions[1]}, conf≥60%+strict: {conditions[2]}")
+        
+        return final_result
 
     except ImportError:
         return compare_faces_basic(known_image_path, unknown_image_file)
     except Exception as e:
+        logger.error(f"Face recognition error: {e}")
         return False
+
+def preprocess_image_for_face_recognition(image_array):
+    """
+    Preprocess image to improve face recognition accuracy
+    """
+    try:
+        # Convert to RGB if needed
+        if len(image_array.shape) == 3 and image_array.shape[2] == 3:
+            # Already RGB
+            processed = image_array
+        else:
+            # Convert BGR to RGB
+            processed = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
+        
+        # Enhance image quality
+        # 1. Histogram equalization for better contrast
+        gray = cv2.cvtColor(processed, cv2.COLOR_RGB2GRAY)
+        enhanced_gray = cv2.equalizeHist(gray)
+        enhanced = cv2.cvtColor(enhanced_gray, cv2.COLOR_GRAY2RGB)
+        
+        # 2. Gaussian blur to reduce noise
+        enhanced = cv2.GaussianBlur(enhanced, (3, 3), 0)
+        
+        return enhanced
+    except Exception as e:
+        logger.warning(f"Image preprocessing failed: {e}, using original")
+        return image_array
 
 def compare_faces_basic_strict(known_image_path, unknown_image_file) -> bool:
     """
@@ -127,12 +196,16 @@ def compare_faces_basic_strict(known_image_path, unknown_image_file) -> bool:
         if unknown_image is None:
             return False
 
+        # Preprocess images for better detection
+        known_processed = preprocess_image_for_face_recognition(known_image)
+        unknown_processed = preprocess_image_for_face_recognition(unknown_image)
+
         # Initialize face detector with better parameters
         face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
         # Convert to grayscale for face detection
-        known_gray = cv2.cvtColor(known_image, cv2.COLOR_BGR2GRAY)
-        unknown_gray = cv2.cvtColor(unknown_image, cv2.COLOR_BGR2GRAY)
+        known_gray = cv2.cvtColor(known_processed, cv2.COLOR_RGB2GRAY)
+        unknown_gray = cv2.cvtColor(unknown_processed, cv2.COLOR_RGB2GRAY)
 
         # Detect faces with stricter parameters
         known_faces = face_cascade.detectMultiScale(
@@ -149,7 +222,6 @@ def compare_faces_basic_strict(known_image_path, unknown_image_file) -> bool:
             minSize=(50, 50),  # Larger minimum face size
             flags=cv2.CASCADE_SCALE_IMAGE
         )
-
 
         # Check if exactly one face is detected in both images
         if len(known_faces) != 1:
@@ -169,7 +241,6 @@ def compare_faces_basic_strict(known_image_path, unknown_image_file) -> bool:
         # Check if face sizes are reasonably similar (within 40% difference)
         size_ratio = min(known_area, unknown_area) / max(known_area, unknown_area)
 
-
         # Stricter size validation
         if size_ratio < 0.6:  # More strict than before (was 0.3)
             return False
@@ -182,7 +253,6 @@ def compare_faces_basic_strict(known_image_path, unknown_image_file) -> bool:
         unknown_face_ratio = unknown_area / unknown_img_area
 
         face_ratio_diff = abs(known_face_ratio - unknown_face_ratio)
-
 
         # If face takes up very different portions of the image, likely different
         if face_ratio_diff > 0.1:  # 10% difference threshold

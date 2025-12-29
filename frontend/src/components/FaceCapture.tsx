@@ -82,9 +82,24 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
 
   const handleConfirm = () => {
     if (photoSrc && matchResult) {
-      onCapture({ ...matchResult, photo: photoSrc });
+      // Strict validation: Only allow Present if face matches
+      if (matchResult.matched) {
+        onCapture({ ...matchResult, photo: photoSrc });
+        handleClose();
+      } else {
+        // Face doesn't match - show error and don't allow Present
+        message.error(`Face verification failed. Cannot mark as Present. Please ensure the correct person is being photographed.`);
+        // Don't close modal, allow retake
+      }
     }
-    handleClose();
+  };
+
+  const handleMarkAbsent = () => {
+    if (photoSrc && matchResult) {
+      // Allow marking as absent even if face doesn't match
+      onCapture({ matched: false, score: matchResult.score, photo: photoSrc });
+      handleClose();
+    }
   };
 
   const handleClose = () => {
@@ -114,14 +129,24 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
             Capture
           </Button>
         ),
-        matchResult && (
+        matchResult && matchResult.matched && (
           <Button 
             key="confirm" 
             type="primary" 
             onClick={handleConfirm}
-            icon={matchResult.matched ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+            icon={<CheckCircleOutlined />}
           >
-            {matchResult.matched ? 'Confirm Present' : 'Mark Absent'}
+            Confirm Present
+          </Button>
+        ),
+        matchResult && !matchResult.matched && (
+          <Button 
+            key="absent" 
+            danger
+            onClick={handleMarkAbsent}
+            icon={<CloseCircleOutlined />}
+          >
+            Mark Absent
           </Button>
         )
       ]}
@@ -191,9 +216,14 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
                   <img src={photoSrc} alt="Captured" style={{ width: 150, height: 150, objectFit: 'cover', borderRadius: 8 }} />
                   <div style={{ marginTop: 16 }}>
                     <h3 style={{ color: matchResult.matched ? '#52c41a' : '#ff4d4f' }}>
-                      {matchResult.matched ? 'Match Success' : 'Match Failed'}
+                      {matchResult.matched ? 'Face Match Verified ✓' : 'Face Match Failed ✗'}
                     </h3>
                     <p>Confidence: {matchResult.score}%</p>
+                    {!matchResult.matched && (
+                      <p style={{ color: '#ff4d4f', fontSize: '12px', marginTop: 8 }}>
+                        ⚠️ Cannot mark as Present - Face verification required
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

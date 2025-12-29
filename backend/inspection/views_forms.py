@@ -1,66 +1,84 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
 from django.core.exceptions import PermissionDenied
 from permissions.decorators import require_permission
 from .models_forms import ACCableInspectionForm, ACDBChecklistForm, HTCableChecklistForm, HTPreCommissionForm, HTPreCommissionTemplateForm, CivilWorkChecklistForm, CementRegisterForm, ConcretePourCardForm, PCCChecklistForm, BarBendingScheduleForm, BatteryChargerChecklistForm, BatteryUPSChecklistForm, BusDuctChecklistForm, ControlCableChecklistForm, ControlRoomAuditChecklistForm, EarthingChecklistForm
 from .serializers_forms import ACCableInspectionFormSerializer, ACDBChecklistFormSerializer, HTCableChecklistFormSerializer, HTPreCommissionFormSerializer, HTPreCommissionTemplateFormSerializer, CivilWorkChecklistFormSerializer, CementRegisterFormSerializer, ConcretePourCardFormSerializer, PCCChecklistFormSerializer, BarBendingScheduleFormSerializer, BatteryChargerChecklistFormSerializer, BatteryUPSChecklistFormSerializer, BusDuctChecklistFormSerializer, ControlCableChecklistFormSerializer, ControlRoomAuditChecklistFormSerializer, EarthingChecklistFormSerializer
 from .models import Inspection
 
-class ACCableInspectionFormViewSet(viewsets.ModelViewSet):
-    serializer_class = ACCableInspectionFormSerializer
+class BaseInspectionFormViewSet(viewsets.ModelViewSet):
+    """Base class for all inspection form viewsets with common functionality"""
     permission_classes = [IsAuthenticated]
-    model = ACCableInspectionForm  # Required for permission decorator
     
     def get_queryset(self):
         user = self.request.user
         user_project = getattr(user, 'project', None)
         
-        queryset = ACCableInspectionForm.objects.select_related('inspection')
+        queryset = self.queryset.select_related('inspection')
         
         if user_project:
             queryset = queryset.filter(inspection__project=user_project)
             
         return queryset.order_by('-created_at')
     
-    def perform_create(self, serializer):
-        # Create inspection first
-        inspection = Inspection.objects.create(
-            project=getattr(self.request.user, 'project', None),
-            inspection_type='electrical',
-            title='AC Cable Testing',
-            description='AC Cable Laying (Testing)',
-            location=serializer.validated_data.get('block_no', ''),
-            scheduled_date=serializer.validated_data.get('date'),
+    def create_inspection(self, serializer, inspection_type, title, description, location_field=None, date_field=None):
+        """Helper method to create inspection with proper validation"""
+        user_project = getattr(self.request.user, 'project', None)
+        if not user_project:
+            raise ValidationError({'project': 'User must be assigned to a project to create inspections'})
+        
+        location = ''
+        if location_field and location_field in serializer.validated_data:
+            location = serializer.validated_data.get(location_field, '')
+        
+        scheduled_date = None
+        if date_field and date_field in serializer.validated_data:
+            scheduled_date = serializer.validated_data.get(date_field)
+        
+        return Inspection.objects.create(
+            project=user_project,
+            inspection_type=inspection_type,
+            title=title,
+            description=description,
+            location=location,
+            scheduled_date=scheduled_date,
             status='completed',
             priority='medium',
             inspector=self.request.user,
             created_by=self.request.user
         )
-        
-        serializer.save(inspection=inspection, created_by_user=self.request.user)
     
-    @require_permission('edit')
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        # Only project admins who created the form can edit
         user_type = getattr(request.user, 'admin_type', None)
         if user_type not in ['client', 'epc', 'contractor'] or instance.created_by_user != request.user:
             raise PermissionDenied("You don't have permission to edit this form")
         return super().update(request, *args, **kwargs)
-
-    @require_permission('edit')
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
     
-    @require_permission('delete')
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        # Only project admins who created the form can delete
         user_type = getattr(request.user, 'admin_type', None)
         if user_type not in ['client', 'epc', 'contractor'] or instance.created_by_user != request.user:
             raise PermissionDenied("You don't have permission to delete this form")
         return super().destroy(request, *args, **kwargs)
+
+class ACCableInspectionFormViewSet(BaseInspectionFormViewSet):
+    serializer_class = ACCableInspectionFormSerializer
+    queryset = ACCableInspectionForm.objects.all()
+    model = ACCableInspectionForm  # Required for permission decorator
+    
+    def perform_create(self, serializer):
+        inspection = self.create_inspection(
+            serializer,
+            inspection_type='electrical',
+            title='AC Cable Testing',
+            description='AC Cable Laying (Testing)',
+            location_field='block_no',
+            date_field='date'
+        )
+        serializer.save(inspection=inspection, created_by_user=self.request.user)
 class ACDBChecklistFormViewSet(viewsets.ModelViewSet):
     serializer_class = ACDBChecklistFormSerializer
     permission_classes = [IsAuthenticated]

@@ -4,6 +4,7 @@ import { PlusOutlined, SearchOutlined, FilterOutlined, DeleteOutlined, EditOutli
 import { useNavigate } from 'react-router-dom';
 import { getPermits, deletePermit } from '../api';
 import * as Types from '../types';
+import PTWRecordPrintPreview from './PTWRecordPrintPreview';
 
 import useAuthStore from '../../../common/store/authStore';
 import dayjs from 'dayjs';
@@ -273,6 +274,7 @@ const PermitList: React.FC = () => {
           >
             Edit
           </Button>
+          <PTWRecordPrintPreview permitData={record} />
           {/* Add verification action buttons based on user role and permit status */}
           {record.status === 'pending_verification' && canVerifyPermit(record) && (
             <Button

@@ -33,25 +33,27 @@ class UserListView(APIView):
                 'message': 'User must be assigned to a project to access chat.'
             }, status=status.HTTP_403_FORBIDDEN)
 
-        # Enhanced communication matrix for proper cross-role communication
-        if admin_type == 'clientuser':
-            # Client users can communicate with EPC users and Contractor users
+        # Enhanced communication matrix based on requirements:
+        # EPC can communicate within their company and with client and contractor company users
+        # Client and contractor users can only communicate with their own users and EPC users
+        if admin_type in ['clientuser', 'client']:
+            # Client users can communicate with EPC users and other client users
             users = CustomUser.objects.filter(
-                admin_type__in=['epcuser', 'contractoruser'],
+                Q(admin_type__in=['epcuser', 'epc']) | Q(admin_type__in=['clientuser', 'client']),
                 project=user_project,
                 is_active=True
             ).exclude(id=current_user.id)
-        elif admin_type == 'epcuser':
-            # EPC users can communicate with Client users and Contractor users
+        elif admin_type in ['epcuser', 'epc']:
+            # EPC users can communicate with all users (client, contractor, and other EPC)
             users = CustomUser.objects.filter(
-                admin_type__in=['clientuser', 'contractoruser'],
+                admin_type__in=['clientuser', 'client', 'contractoruser', 'contractor', 'epcuser', 'epc'],
                 project=user_project,
                 is_active=True
             ).exclude(id=current_user.id)
-        elif admin_type == 'contractoruser':
-            # Contractor users can communicate with EPC users and Client users
+        elif admin_type in ['contractoruser', 'contractor']:
+            # Contractor users can communicate with EPC users and other contractor users
             users = CustomUser.objects.filter(
-                admin_type__in=['epcuser', 'clientuser'],
+                Q(admin_type__in=['epcuser', 'epc']) | Q(admin_type__in=['contractoruser', 'contractor']),
                 project=user_project,
                 is_active=True
             ).exclude(id=current_user.id)
@@ -88,12 +90,7 @@ class UserListView(APIView):
             
             users_data.append(user_data)
 
-        return Response({
-            'users': users_data,
-            'count': len(users_data),
-            'current_user_type': admin_type,
-            'project': user_project.projectName if user_project else None
-        })
+        return Response(users_data)
 
 class MessagePagination(PageNumberPagination):
     page_size = 20

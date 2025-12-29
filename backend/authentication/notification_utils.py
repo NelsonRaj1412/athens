@@ -3,6 +3,9 @@ from asgiref.sync import async_to_sync
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -169,10 +172,20 @@ def get_unread_count(user_id):
 def send_chat_message_notification(receiver_id, sender_id, message_content, message_id, has_file=False):
     """
     Send notification when a new chat message is received
+    CRITICAL: Only sends to the specific receiver - no admin users should receive this
     """
     try:
+        # Validate that receiver_id and sender_id are different
+        if receiver_id == sender_id:
+            logger.warning(f"Attempted to send chat notification to self: user_id={sender_id}")
+            return None
+        
         sender = User.objects.get(id=sender_id)
+        receiver = User.objects.get(id=receiver_id)
         sender_name = getattr(sender, 'name', None) or sender.username
+
+        # Log the notification creation for debugging
+        logger.info(f"Creating chat notification: sender={sender_name}(ID:{sender_id}) -> receiver={receiver.username}(ID:{receiver_id})")
 
         if has_file:
             title = f"📎 File from {sender_name}"
@@ -196,8 +209,9 @@ def send_chat_message_notification(receiver_id, sender_id, message_content, mess
 
         link = f"/dashboard/chatbox?userId={sender_id}"
 
-        return send_websocket_notification(
-            user_id=receiver_id,
+        # CRITICAL: Only send to the specific receiver_id - no broadcasting to admins
+        notification = send_websocket_notification(
+            user_id=receiver_id,  # Only the intended receiver
             title=title,
             message=message,
             notification_type=notification_type,
@@ -205,10 +219,19 @@ def send_chat_message_notification(receiver_id, sender_id, message_content, mess
             link=link,
             sender_id=sender_id
         )
+        
+        if notification:
+            logger.info(f"Chat notification created successfully: ID={notification.id} for user={receiver_id}")
+        else:
+            logger.error(f"Failed to create chat notification for user={receiver_id}")
+        
+        return notification
 
-    except User.DoesNotExist:
+    except User.DoesNotExist as e:
+        logger.error(f"User not found in chat notification: sender_id={sender_id}, receiver_id={receiver_id}, error={e}")
         return None
     except Exception as e:
+        logger.error(f"Error creating chat notification: sender_id={sender_id}, receiver_id={receiver_id}, error={e}")
         return None
 
 def send_chat_message_delivered_notification(sender_id, receiver_id, message_id):

@@ -18,8 +18,11 @@ class SignatureTemplateGenerator:
     """
     
     def __init__(self, logo_opacity=0.5):
-        self.template_width = 400
-        self.template_height = 120
+        # Match exact .signature-content dimensions
+        # Container: min-height 90px + padding 12px*2 = 114px
+        # Content: 114px - content padding 8px*2 = 98px
+        self.template_width = 400  # Standard width
+        self.template_height = 98   # Exact .signature-content height
         self.logo_max_width = 80
         self.logo_max_height = 60
         self.logo_opacity = logo_opacity  # Configurable logo transparency (0.0 to 1.0)
@@ -81,32 +84,34 @@ class SignatureTemplateGenerator:
         
         draw = ImageDraw.Draw(img)
         
-        # Adobe DSC-style layout to match frontend preview
-        left_margin = 12
-        top_margin = 20
-        line_height = 18
+        # Match exact CSS layout: .signature-content padding: 8px
+        left_margin = 8   # CSS padding
+        top_margin = 8    # CSS padding  
+        line_height = 16  # Compact for 98px height
         
         # Name (large, bold) - matches frontend .signer-name
         draw.text((left_margin, top_margin), full_name, font=name_font, fill=text_color)
         
         # Designation below name - matches frontend .signer-designation
         if user_detail.user.designation:
-            designation_y = top_margin + 32
+            designation_y = top_margin + 24  # Compact spacing for 98px
             draw.text((left_margin, designation_y), user_detail.user.designation, font=detail_font, fill=(102, 102, 102))  # #666
         
         # Company name below designation - matches frontend .signer-company
         company_name = self._get_company_name(user_detail.user)
         if company_name:
-            company_y = top_margin + 52
+            company_y = top_margin + 40  # Compact spacing for 98px
             draw.text((left_margin, company_y), company_name, font=detail_font, fill=(136, 136, 136))  # #888
         
         # Vertical divider line - matches frontend .signature-divider
+        # CSS: flex: 0 0 1px, margin: 0 8px, position at 55% like CSS
         divider_x = int(self.template_width * 0.55)
         draw.line([(divider_x, top_margin), (divider_x, self.template_height - top_margin)], fill=(192, 192, 192), width=1)  # #c0c0c0
         
-        # Right column for digital signature info - matches frontend layout
-        right_margin = divider_x + 16
-        right_y = top_margin + 8
+        # Right column - matches .signature-right-section
+        # CSS: flex: 0 0 45%, padding-left: 8px, padding-top: 2px
+        right_margin = divider_x + 8  # CSS margin + padding-left
+        right_y = top_margin + 2      # CSS padding-top
         
         # "Digitally signed by"
         draw.text((right_margin, right_y), "Digitally signed by", font=detail_font, fill=text_color)

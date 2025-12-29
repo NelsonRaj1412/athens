@@ -664,8 +664,8 @@ const AdminApproval: React.FC = () => {
                     </Form.Item>
                   </div>
                   <Form.Item className="!mb-0 mt-auto">
-                    <Button type="primary" onClick={() => createOrResetAdmin('client')} loading={loadingClient} icon={clientAdmin.created ? <KeyOutlined /> : <UserAddOutlined />} block size="large">
-                      {clientAdmin.created ? 'Update Admin Details' : 'Create Admin & Download Credentials'}
+                    <Button type="primary" onClick={() => createOrResetAdmin('client')} loading={loadingClient} icon={clientAdmin.created ? <SyncOutlined /> : <UserAddOutlined />} block size="large">
+                      {clientAdmin.created ? 'Sync Admin Details' : 'Create Admin & Download Credentials'}
                     </Button>
                   </Form.Item>
                 </Card>
@@ -773,8 +773,8 @@ const AdminApproval: React.FC = () => {
                     </Form.Item>
                   </div>
                   <Form.Item className="!mb-0 mt-auto">
-                    <Button type="primary" onClick={() => createOrResetAdmin('epc')} loading={loadingEpc} icon={epcAdmin.created ? <KeyOutlined /> : <UserAddOutlined />} block size="large">
-                      {epcAdmin.created ? 'Update Admin Details' : 'Create Admin & Download Credentials'}
+                    <Button type="primary" onClick={() => createOrResetAdmin('epc')} loading={loadingEpc} icon={epcAdmin.created ? <SyncOutlined /> : <UserAddOutlined />} block size="large">
+                      {epcAdmin.created ? 'Sync Admin Details' : 'Create Admin & Download Credentials'}
                     </Button>
                   </Form.Item>
                 </Card>
@@ -821,8 +821,8 @@ const AdminApproval: React.FC = () => {
                       </Form.Item>
                     </div>
                     <Form.Item className="!mb-0 mt-auto">
-                      <Button type="primary" onClick={() => createOrResetAdmin('contractor', index)} loading={loadingContractor[index]} icon={contractor.created ? <KeyOutlined /> : <UserAddOutlined />} block size="large">
-                        {contractor.created ? 'Update Admin Details' : 'Create Admin & Download Credentials'}
+                      <Button type="primary" onClick={() => createOrResetAdmin('contractor', index)} loading={loadingContractor[index]} icon={contractor.created ? <SyncOutlined /> : <UserAddOutlined />} block size="large">
+                        {contractor.created ? 'Sync Admin Details' : 'Create Admin & Download Credentials'}
                       </Button>
                     </Form.Item>
                   </Card>

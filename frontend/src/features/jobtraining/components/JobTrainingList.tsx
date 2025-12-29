@@ -10,7 +10,9 @@ import JobTrainingView from './JobTrainingView';
 import JobTrainingEdit from './JobTrainingEdit';
 import JobTrainingCreation from './JobTrainingCreation';
 import JobTrainingAttendance from './JobTrainingAttendance';
+import JobTrainingRecordPrintPreview from './JobTrainingRecordPrintPreview';
 import type { ColumnsType } from 'antd/es/table';
+import TrainingPrintPreview from '../../training/components/TrainingPrintPreview';
 
 const JobTrainingList: React.FC = () => {
   const {message} = App.useApp();
@@ -354,6 +356,8 @@ const JobTrainingList: React.FC = () => {
             />
           </Tooltip>
           
+          <JobTrainingRecordPrintPreview trainingData={record} />
+          
           {record.status !== 'completed' && (
             <Tooltip title="Take Attendance">
               <Button 
@@ -396,13 +400,16 @@ const JobTrainingList: React.FC = () => {
           <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>Job Training Management</h1>
           <p style={{ margin: '4px 0 0 0', color: '#666', fontSize: '14px' }}>Manage and track job training sessions</p>
         </div>
-        <Button 
-          type="primary" 
-          icon={<PlusOutlined />} 
-          onClick={handleAddJT}
-        >
-          Add Job Training
-        </Button>
+        <Space>
+          <TrainingPrintPreview />
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />} 
+            onClick={handleAddJT}
+          >
+            Add Job Training
+          </Button>
+        </Space>
       </div>
       
       <Table

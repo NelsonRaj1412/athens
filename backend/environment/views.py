@@ -168,9 +168,42 @@ class BiodiversityEventViewSet(viewsets.ModelViewSet):
 class ESGPolicyViewSet(viewsets.ModelViewSet):
     queryset = ESGPolicy.objects.all().order_by('-created_at')
     serializer_class = ESGPolicySerializer
+    permission_classes = [IsAuthenticated, ESGPermission]
     
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+    
+    def update(self, request, *args, **kwargs):
+        """Override update to handle date validation issues"""
+        try:
+            # Get the instance
+            instance = self.get_object()
+            
+            # Handle date fields properly
+            data = request.data.copy()
+            if 'effective_date' in data and data['effective_date']:
+                # Ensure date is in proper format
+                from datetime import datetime
+                if isinstance(data['effective_date'], str):
+                    try:
+                        # Try to parse the date
+                        datetime.strptime(data['effective_date'], '%Y-%m-%d')
+                    except ValueError:
+                        return Response(
+                            {'effective_date': ['Date must be in YYYY-MM-DD format']},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+            
+            serializer = self.get_serializer(instance, data=data, partial=kwargs.get('partial', False))
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {'error': f'Update failed: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class GrievanceViewSet(viewsets.ModelViewSet):
     serializer_class = GrievanceSerializer
@@ -419,7 +452,39 @@ class EnvironmentalMonitoringViewSet(viewsets.ModelViewSet):
         return EnvironmentalMonitoring.objects.none()
     
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user, site=self.request.user.project)
+        if not serializer.validated_data.get('site') and hasattr(self.request.user, 'project'):
+            serializer.validated_data['site'] = self.request.user.project
+        serializer.save(created_by=self.request.user)
+    
+    @action(detail=False, methods=['get'])
+    def compliance_dashboard(self, request):
+        """Get compliance dashboard data for environmental monitoring"""
+        queryset = self.get_queryset()
+        
+        # Calculate compliance metrics
+        total_measurements = queryset.count()
+        compliant_measurements = queryset.filter(compliance_status='compliant').count()
+        warning_measurements = queryset.filter(compliance_status='warning').count()
+        exceeded_measurements = queryset.filter(compliance_status='exceeded').count()
+        critical_measurements = queryset.filter(compliance_status='critical').count()
+        
+        # Parameter breakdown
+        parameter_breakdown = queryset.values('parameter').annotate(
+            total_count=Count('id'),
+            compliant_count=Count('id', filter=Q(compliance_status='compliant')),
+            avg_value=Avg('value')
+        )
+        
+        return Response({
+            'total_measurements': total_measurements,
+            'compliance_summary': {
+                'compliant': compliant_measurements,
+                'warning': warning_measurements,
+                'exceeded': exceeded_measurements,
+                'critical': critical_measurements
+            },
+            'parameter_breakdown': list(parameter_breakdown)
+        })
 
 class CarbonFootprintViewSet(viewsets.ModelViewSet):
     serializer_class = CarbonFootprintSerializer
@@ -432,7 +497,9 @@ class CarbonFootprintViewSet(viewsets.ModelViewSet):
         return CarbonFootprint.objects.none()
     
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user, site=self.request.user.project)
+        if not serializer.validated_data.get('site') and hasattr(self.request.user, 'project'):
+            serializer.validated_data['site'] = self.request.user.project
+        serializer.save(created_by=self.request.user)
 
 class WaterManagementViewSet(viewsets.ModelViewSet):
     serializer_class = WaterManagementSerializer
@@ -445,7 +512,9 @@ class WaterManagementViewSet(viewsets.ModelViewSet):
         return WaterManagement.objects.none()
     
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user, site=self.request.user.project)
+        if not serializer.validated_data.get('site') and hasattr(self.request.user, 'project'):
+            serializer.validated_data['site'] = self.request.user.project
+        serializer.save(created_by=self.request.user)
 
 class EnergyManagementViewSet(viewsets.ModelViewSet):
     serializer_class = EnergyManagementSerializer
@@ -458,7 +527,9 @@ class EnergyManagementViewSet(viewsets.ModelViewSet):
         return EnergyManagement.objects.none()
     
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user, site=self.request.user.project)
+        if not serializer.validated_data.get('site') and hasattr(self.request.user, 'project'):
+            serializer.validated_data['site'] = self.request.user.project
+        serializer.save(created_by=self.request.user)
 
 class EnvironmentalIncidentViewSet(viewsets.ModelViewSet):
     serializer_class = EnvironmentalIncidentSerializer
@@ -471,7 +542,9 @@ class EnvironmentalIncidentViewSet(viewsets.ModelViewSet):
         return EnvironmentalIncident.objects.none()
     
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user, site=self.request.user.project)
+        if not serializer.validated_data.get('site') and hasattr(self.request.user, 'project'):
+            serializer.validated_data['site'] = self.request.user.project
+        serializer.save(created_by=self.request.user)
 
 class SustainabilityTargetViewSet(viewsets.ModelViewSet):
     serializer_class = SustainabilityTargetSerializer

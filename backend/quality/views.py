@@ -6,6 +6,7 @@ from django.utils import timezone
 from django.db.models import Q, Count, Avg, Sum, F
 from django.db import transaction
 from datetime import datetime, timedelta
+from authentication.project_isolation import ProjectIsolationMixin, apply_project_isolation
 import json
 
 from .models import (QualityTemplate, QualityInspection, QualityDefect, 
@@ -31,14 +32,18 @@ class QualityStandardViewSet(viewsets.ModelViewSet):
             'description': s.description
         } for s in standards])
 
-class QualityTemplateViewSet(viewsets.ModelViewSet):
+class QualityTemplateViewSet(ProjectIsolationMixin, viewsets.ModelViewSet):
     """Enhanced Quality Template Management"""
     queryset = QualityTemplate.objects.all()
     serializer_class = QualityTemplateSerializer
-    permission_classes = [QualityManagerPermission]
+    permission_classes = [IsAuthenticated]
+    model = QualityTemplate
     
     def get_queryset(self):
         queryset = super().get_queryset()
+        # Apply project isolation
+        queryset = apply_project_isolation(queryset, self.request.user)
+        
         industry = self.request.query_params.get('industry')
         inspection_type = self.request.query_params.get('inspection_type')
         criticality = self.request.query_params.get('criticality')
@@ -54,6 +59,17 @@ class QualityTemplateViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(is_certified=True)
             
         return queryset.filter(is_active=True)
+    
+    def perform_create(self, serializer):
+        user_project = getattr(self.request.user, 'project', None)
+        if not user_project:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError("User must be assigned to a project to create quality templates.")
+        
+        serializer.save(
+            created_by=self.request.user,
+            project=user_project
+        )
     
     @action(detail=True, methods=['post'])
     def certify_template(self, request, pk=None):
@@ -110,14 +126,18 @@ class QualityTemplateViewSet(viewsets.ModelViewSet):
         
         return Response(analytics)
 
-class QualityInspectionViewSet(viewsets.ModelViewSet):
+class QualityInspectionViewSet(ProjectIsolationMixin, viewsets.ModelViewSet):
     """Advanced Quality Inspection Management"""
     queryset = QualityInspection.objects.all()
     serializer_class = QualityInspectionSerializer
-    permission_classes = [QualityInspectorPermission]
+    permission_classes = [IsAuthenticated]
+    model = QualityInspection
     
     def get_queryset(self):
         queryset = super().get_queryset()
+        # Apply project isolation
+        queryset = apply_project_isolation(queryset, self.request.user)
+        
         status_filter = self.request.query_params.get('status')
         result_filter = self.request.query_params.get('result')
         priority_filter = self.request.query_params.get('priority')
@@ -139,6 +159,17 @@ class QualityInspectionViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(scheduled_date__lte=date_to)
             
         return queryset.order_by('-scheduled_date')
+    
+    def perform_create(self, serializer):
+        user_project = getattr(self.request.user, 'project', None)
+        if not user_project:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError("User must be assigned to a project to create quality inspections.")
+        
+        serializer.save(
+            inspector=self.request.user,
+            site_project=user_project
+        )
     
     @action(detail=True, methods=['post'])
     def start_inspection(self, request, pk=None):

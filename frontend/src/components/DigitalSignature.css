@@ -4,20 +4,16 @@
   min-height: 90px;
   border: 1px solid #d0d0d0;
   background: #ffffff;
-  padding: 12px;
   box-sizing: border-box;
   font-family: Arial, sans-serif;
   position: relative;
 }
 
 .signature-content {
-  position: relative;
   z-index: 2;
   display: flex;
-  width: 100%;
   background: rgba(255, 255, 255, 0.8);
   border-radius: 4px;
-  padding: 8px;
 }
 
 .signature-content::before {

@@ -355,19 +355,38 @@ const ChatBox: React.FC = () => {
       try {
         setLoading(true);
         const response = await api.get('/chatbox/users/');
-        const fetchedUsers: User[] = response.data;
+        
+        // Handle both array and object responses
+        let fetchedUsers: User[] = [];
+        if (Array.isArray(response.data)) {
+          fetchedUsers = response.data.map((user: any) => ({
+            id: user.id,
+            name: user.name || user.username || 'Unknown User',
+            avatar: user.photo || user.avatar,
+            django_user_type: user.admin_type
+          }));
+        } else if (response.data && response.data.results) {
+          fetchedUsers = response.data.results.map((user: any) => ({
+            id: user.id,
+            name: user.name || user.username || 'Unknown User',
+            avatar: user.photo || user.avatar,
+            django_user_type: user.admin_type
+          }));
+        }
+        
         const filteredUsers = fetchedUsers.filter(user => String(user.id) !== String(currentUserId));
         setUsers(filteredUsers);
 
         if (filteredUsers.length > 0 && !selectedUserId) {
           setSelectedUserId(filteredUsers[0].id);
         }
-      } catch (error) {
+      } catch (error: any) {
+        console.error('Failed to load users:', error);
         if (retryCount < 3) {
           const delay = Math.pow(2, retryCount) * 1000;
           setTimeout(() => fetchUsers(retryCount + 1), delay);
         } else {
-          message.error('Failed to load users.');
+          message.error(`Failed to load users: ${error.response?.data?.message || error.message || 'Unknown error'}`);
           setUsers([]);
         }
       } finally {
@@ -375,8 +394,11 @@ const ChatBox: React.FC = () => {
       }
     };
 
-    if (['clientuser', 'contractoruser', 'epcuser'].includes(usertype || '')) {
+    if (['clientuser', 'contractoruser', 'epcuser', 'epc', 'client', 'contractor'].includes(usertype || '')) {
       fetchUsers();
+    } else {
+      console.log('User type not supported for chat:', usertype);
+      setUsers([]);
     }
   }, [usertype, currentUserId, selectedUserId]);
   // Handle user selection

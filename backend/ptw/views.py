@@ -136,6 +136,11 @@ class PermitViewSet(ProjectIsolationMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user_project = getattr(self.request.user, 'project', None)
         
+        # Ensure user has a project for project isolation
+        if not user_project:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError("User must be assigned to a project to create permits.")
+        
         with transaction.atomic():
             permit = serializer.save(
                 created_by=self.request.user,

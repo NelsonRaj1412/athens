@@ -67,7 +67,7 @@ X_FRAME_OPTIONS = 'DENY'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Development overrides (only when DEBUG=True)
-DEBUG = True  # Re-enable debug mode
+DEBUG = False  # Disable debug mode for performance
 if DEBUG:
     SECURE_SSL_REDIRECT = False
     SECURE_HSTS_SECONDS = 0
@@ -149,12 +149,10 @@ ASGI_APPLICATION = 'backend.asgi.application'
 # Channel layers configuration
 CHANNEL_LAYERS = {
     'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
-        # For production, use Redis:
-        # 'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        # 'CONFIG': {
-        #     "hosts": [('127.0.0.1', 6379)],
-        # },
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
     },
 }
 

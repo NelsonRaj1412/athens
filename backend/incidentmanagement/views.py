@@ -2,6 +2,7 @@ from rest_framework import viewsets, permissions, status, filters, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db import transaction
 from django.utils import timezone
@@ -1098,3 +1099,60 @@ class EightDAnalysisMethodViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+class IncidentLearningDetailView(APIView):
+    """
+    Custom view to handle incident learning endpoint in the format expected by frontend
+    """
+    permission_classes = [IsAuthenticated, CanManageIncidents]
+    
+    def get(self, request, incident_id):
+        """Get lessons learned for a specific incident"""
+        try:
+            incident = get_object_or_404(Incident, incident_id=incident_id)
+            
+            # Check project isolation
+            user_project = getattr(request.user, 'project', None)
+            if user_project and incident.project != user_project:
+                return Response(
+                    {'error': 'Access denied to this incident'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            try:
+                learning = IncidentLearning.objects.get(incident=incident)
+                serializer = IncidentLearningSerializer(learning, context={'request': request})
+                return Response(serializer.data)
+            except IncidentLearning.DoesNotExist:
+                return Response({'detail': 'No lessons learned found'}, status=status.HTTP_404_NOT_FOUND)
+                
+        except Incident.DoesNotExist:
+            return Response({'error': 'Incident not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    def post(self, request, incident_id):
+        """Create or update lessons learned for a specific incident"""
+        try:
+            incident = get_object_or_404(Incident, incident_id=incident_id)
+            
+            # Check project isolation
+            user_project = getattr(request.user, 'project', None)
+            if user_project and incident.project != user_project:
+                return Response(
+                    {'error': 'Access denied to this incident'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Check if learning already exists
+            try:
+                learning = IncidentLearning.objects.get(incident=incident)
+                serializer = IncidentLearningSerializer(learning, data=request.data, context={'request': request})
+            except IncidentLearning.DoesNotExist:
+                serializer = IncidentLearningSerializer(data=request.data, context={'request': request})
+            
+            if serializer.is_valid():
+                serializer.save(incident=incident, created_by=request.user)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Incident.DoesNotExist:
+            return Response({'error': 'Incident not found'}, status=status.HTTP_404_NOT_FOUND)

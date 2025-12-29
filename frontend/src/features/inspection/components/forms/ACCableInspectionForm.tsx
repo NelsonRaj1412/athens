@@ -15,6 +15,8 @@ import { inspectionService } from '../../services/inspectionService';
 import useAuthStore from '@common/store/authStore';
 import api from '@common/utils/axiosetup';
 import PageLayout from '@common/components/PageLayout';
+import DigitalSignature from '../../../../components/DigitalSignature';
+import InspectionPrintPreview from '../InspectionPrintPreview';
 
 const { Title } = Typography;
 
@@ -64,7 +66,8 @@ const ACCableInspectionForm: React.FC = () => {
         setUserDetails({
           ...userDetails,
           company_name: companyData.company_name,
-          signature_template: signatureTemplate
+          signature_template: signatureTemplate,
+          logo_url: companyData.company_logo ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}${companyData.company_logo}` : null
         });
         
         // Auto-fill tested by fields with current user info
@@ -123,6 +126,7 @@ const ACCableInspectionForm: React.FC = () => {
         { title: 'Create' }
       ]}
       actions={[
+        <InspectionPrintPreview key="print-preview" />,
         <Button key="download" type="primary" icon={<DownloadOutlined />} onClick={handleDownload}>Download PDF</Button>,
         <Button key="cancel" danger icon={<CloseOutlined />} onClick={handleCancel}>Cancel</Button>
       ]}
@@ -245,33 +249,18 @@ const ACCableInspectionForm: React.FC = () => {
                     <tr>
                       <td className="border border-gray-400 p-3 font-semibold bg-gray-50">Signature</td>
                       <td className="border border-gray-400 p-1">
-                        <Form.Item name="tested_by_signature" className="mb-0">
-                          {userDetails?.signature_template ? (
-                            <div className="relative flex items-center justify-center h-20">
-                              <img 
-                                src={userDetails.signature_template.startsWith('http') ? userDetails.signature_template : `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}${userDetails.signature_template}`}
-                                alt="Digital Signature" 
-                                className="max-h-16 max-w-full object-contain cursor-pointer"
-                                onClick={() => setPreviewVisible(true)}
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                                }}
-                              />
-                              <Button 
-                                type="text" 
-                                icon={<EyeOutlined />} 
-                                size="small"
-                                className="absolute top-0 right-0 opacity-70 hover:opacity-100"
-                                onClick={() => setPreviewVisible(true)}
-                              />
-                              <span className="hidden text-gray-500 text-sm">Digital signature</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center h-20 text-gray-500 text-sm">
-                              Digital signature
-                            </div>
-                          )}
+                        <Form.Item name="tested_by_signature" className="mb-0" style={{ height: 'auto' }}>
+                          <div style={{ transform: 'scale(0.7)', transformOrigin: 'top left', width: '143%', height: 'auto', overflow: 'hidden' }}>
+                            <DigitalSignature 
+                              signerName={userDetails?.name || username}
+                              designation={userDetails?.designation}
+                              companyName={userDetails?.company_name}
+                              date={new Date().toLocaleDateString('en-CA')}
+                              time={new Date().toLocaleTimeString('en-GB')}
+                              logoUrl={userDetails?.logo_url}
+                              employeeId={userDetails?.employee_id}
+                            />
+                          </div>
                         </Form.Item>
                       </td>
                       <td className="border border-gray-400 p-1">

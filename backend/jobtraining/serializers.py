@@ -8,19 +8,48 @@ User = get_user_model()
 class JobTrainingAttendanceSerializer(serializers.ModelSerializer):
     worker_name = serializers.SerializerMethodField()
     worker_photo = serializers.SerializerMethodField()
+    participant_name = serializers.SerializerMethodField()
+    participant_photo = serializers.SerializerMethodField()
     
     class Meta:
         model = JobTrainingAttendance
         fields = [
             'id', 'job_training', 'worker', 'worker_name', 'worker_photo',
+            'participant_type', 'user_id', 'user_name', 'participant_name', 'participant_photo',
             'status', 'attendance_photo', 'match_score', 'timestamp'
         ]
     
     def get_worker_name(self, obj):
-        return f"{obj.worker.name} {obj.worker.surname or ''}"
+        if obj.participant_type == 'worker' and obj.worker:
+            return f"{obj.worker.name} {obj.worker.surname or ''}"
+        elif obj.participant_type == 'user':
+            return obj.user_name or 'Unknown User'
+        return 'Unknown'
     
     def get_worker_photo(self, obj):
-        return obj.worker.photo if obj.worker.photo else None
+        if obj.participant_type == 'worker' and obj.worker:
+            return obj.worker.photo if obj.worker.photo else None
+        return None
+    
+    def get_participant_name(self, obj):
+        if obj.participant_type == 'worker' and obj.worker:
+            return f"{obj.worker.name} {obj.worker.surname or ''}"
+        elif obj.participant_type == 'user':
+            return obj.user_name or 'Unknown User'
+        return 'Unknown'
+    
+    def get_participant_photo(self, obj):
+        if obj.participant_type == 'worker' and obj.worker and obj.worker.photo:
+            return obj.worker.photo
+        # For users, we'll need to get the photo from the user model if available
+        elif obj.participant_type == 'user' and obj.user_id:
+            try:
+                user = User.objects.get(id=obj.user_id)
+                if hasattr(user, 'user_detail') and user.user_detail and user.user_detail.photo:
+                    return user.user_detail.photo.url
+            except:
+                pass
+        return None
 
 class JobTrainingSerializer(serializers.ModelSerializer):
     attendances = JobTrainingAttendanceSerializer(many=True, read_only=True)

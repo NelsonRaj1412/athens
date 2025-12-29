@@ -3,14 +3,14 @@ import { Table, Button, Space, Modal, App, Tag, Tooltip } from 'antd';
 import { EditOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, TeamOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import api from '@common/utils/axiosetup';
 import useAuthStore from '@common/store/authStore';
-// import { usePermissionControl } from '../../../hooks/usePermissionControl';
-// import PermissionRequestModal from '../../../components/permissions/PermissionRequestModal';
 import type { ToolboxTalkData } from '../types';
 import ToolboxTalkView from './ToolboxTalkView';
 import ToolboxTalkEdit from './ToolboxTalkEdit';
 import ToolboxTalkCreation from './ToolboxTalkCreation';
 import ToolboxTalkAttendance from './ToolboxTalkAttendance';
 import PageLayout from '@common/components/PageLayout';
+import TBTPrintPreview from '../../tbt/components/TBTPrintPreview';
+import TBTRecordPrintPreview from './TBTRecordPrintPreview';
 
 const ToolboxTalkList: React.FC = () => {
   const {message, modal} = App.useApp();
@@ -276,6 +276,7 @@ const ToolboxTalkList: React.FC = () => {
               style={{ borderRadius: 4 }}
             />
           </Tooltip>
+          <TBTRecordPrintPreview tbtData={record} />
           <Tooltip title="Delete">
             <Button
               icon={<DeleteOutlined />}
@@ -315,13 +316,16 @@ const ToolboxTalkList: React.FC = () => {
         { title: 'Toolbox Talk' }
       ]}
       actions={
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={handleAddTBT}
-        >
-          Add Toolbox Talk
-        </Button>
+        <Space>
+          <TBTPrintPreview />
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleAddTBT}
+          >
+            Add Toolbox Talk
+          </Button>
+        </Space>
       }
     >
       <div>

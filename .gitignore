@@ -2,7 +2,7 @@
 backend/venv/
 
 # Node modules
-frontedn/node_modules/
+frontend/node_modules/
 
 # IDE files
 .vscode/

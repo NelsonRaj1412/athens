@@ -110,7 +110,7 @@ class MomSerializer(serializers.ModelSerializer):
         return obj.scheduled_by == request.user
     
     def validate_meeting_datetime(self, value):
-        """Validate meeting datetime - skip future validation in edit mode"""
+        """Validate meeting datetime - allow past dates in edit mode"""
         # Check if this is an update operation (instance exists)
         if self.instance:
             # In edit mode, allow any datetime without future validation

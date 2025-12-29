@@ -20,6 +20,11 @@ router.register(r'8d-analysis-methods', views.EightDAnalysisMethodViewSet, basen
 router.register(r'8d-corrective-actions', views.EightDCorrectiveActionViewSet, basename='8d-corrective-action')
 router.register(r'8d-prevention-actions', views.EightDPreventionActionViewSet, basename='8d-prevention-action')
 
+# Custom URL patterns for nested resources
+custom_patterns = [
+    path('incidents/<uuid:incident_id>/learning/', views.IncidentLearningDetailView.as_view(), name='incident-learning-detail'),
+]
+
 urlpatterns = [
     path('', include(router.urls)),
-]
+] + custom_patterns

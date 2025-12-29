@@ -17,6 +17,7 @@ import TextArea from 'antd/es/input/TextArea';
 import useAuthStore from '../../../common/store/authStore';
 import { createPermit, updatePermit, getPermitTypes, getPermit } from '../api';
 import PageLayout from '../../../common/components/PageLayout';
+import PTWPrintPreview from './PTWPrintPreview';
 
 const { Option } = Select;
 const { Step } = Steps;
@@ -1475,6 +1476,7 @@ const EnhancedPermitForm: React.FC = () => {
       ]}
       actions={
         <Space>
+          <PTWPrintPreview />
           {autoSaving && <Spin size="small" />}
           <Badge 
             status={syncStatus === 'synced' ? 'success' : 'processing'} 

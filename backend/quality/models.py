@@ -94,6 +94,15 @@ class QualityTemplate(models.Model):
     approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_templates')
     approved_at = models.DateTimeField(null=True, blank=True)
     
+    # Project isolation
+    project = models.ForeignKey(
+        'authentication.Project',
+        on_delete=models.CASCADE,
+        related_name='quality_templates',
+        null=True,
+        blank=True
+    )
+    
     class Meta:
         ordering = ['-created_at']
         indexes = [
@@ -139,7 +148,13 @@ class QualityInspection(models.Model):
     template = models.ForeignKey(QualityTemplate, on_delete=models.CASCADE)
     
     # Project & Product Information
-    project_id = models.CharField(max_length=100, blank=True)
+    site_project = models.ForeignKey(
+        'authentication.Project',
+        on_delete=models.CASCADE,
+        related_name='quality_inspections',
+        null=True,
+        blank=True
+    )
     work_order_number = models.CharField(max_length=100, blank=True)
     purchase_order_number = models.CharField(max_length=100, blank=True)
     reference_number = models.CharField(max_length=100)

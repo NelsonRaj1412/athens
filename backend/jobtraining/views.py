@@ -192,7 +192,7 @@ class JobTrainingViewSet(viewsets.ModelViewSet):
 
             return Response({
                 'count': len(all_trained),
-                'workers': workers_data,
+                'workers': all_trained,  # Return all participants in workers field for compatibility
                 'users': users_data,
                 'all_participants': all_trained,
                 'workers_count': len(workers_data),
@@ -217,9 +217,9 @@ class JobTrainingViewSet(viewsets.ModelViewSet):
         job_training = self.get_object()
         
         if request.method == 'GET':
-            # Return existing attendance records
+            # Return existing attendance records with proper serialization
             attendances = job_training.attendances.all()
-            serializer = JobTrainingAttendanceSerializer(attendances, many=True)
+            serializer = JobTrainingAttendanceSerializer(attendances, many=True, context={'request': request})
             return Response(serializer.data)
         
         # POST method - submit attendance
@@ -256,11 +256,11 @@ class JobTrainingViewSet(viewsets.ModelViewSet):
                     attendance, created = JobTrainingAttendance.objects.update_or_create(
                         job_training=job_training,
                         worker=worker,
+                        participant_type='worker',
                         defaults={
                             'status': attendance_status,
                             'attendance_photo': attendance_photo,
-                            'match_score': match_score,
-                            'participant_type': 'worker'
+                            'match_score': match_score
                         }
                     )
                     
@@ -270,20 +270,19 @@ class JobTrainingViewSet(viewsets.ModelViewSet):
                         present_participants.append(f"Worker: {worker.name} {worker.surname}")
                         
                 elif participant_type == 'user':
-                    # Handle user attendance - create a special record
+                    # Handle user attendance
                     user = User.objects.get(id=participant_id, project=request.user.project)
                     
-                    # For users, we'll create a JobTrainingAttendance with a special marker
-                    # Since the model expects a worker, we'll use the user info in the attendance_photo field
+                    # Create or update attendance record for users
                     attendance, created = JobTrainingAttendance.objects.update_or_create(
                         job_training=job_training,
-                        worker_id=None,  # No worker for users
+                        worker=None,  # No worker for users
+                        participant_type='user',
+                        user_id=participant_id,
                         defaults={
                             'status': attendance_status,
                             'attendance_photo': attendance_photo,
                             'match_score': match_score,
-                            'participant_type': 'user',
-                            'user_id': participant_id,  # Store user ID
                             'user_name': user.get_full_name() or user.username
                         }
                     )

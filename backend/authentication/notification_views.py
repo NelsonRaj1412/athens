@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+import logging
 
 from .models_notification import Notification, NotificationPreference
 from .notification_utils import (
@@ -16,6 +17,8 @@ from .notification_utils import (
     get_user_notifications,
     get_unread_count
 )
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -36,7 +39,9 @@ class NotificationListView(APIView):
             
             notifications_data = []
             for notification in notifications:
-                notifications_data.append(notification.to_dict())
+                # Filter out chat notifications that don't belong to this user
+                if self._should_include_notification(notification, request.user):
+                    notifications_data.append(notification.to_dict())
             
             return Response({
                 'notifications': notifications_data,
@@ -48,6 +53,18 @@ class NotificationListView(APIView):
             return Response({
                 'error': f'Error fetching notifications: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def _should_include_notification(self, notification, user):
+        """
+        Determine if a notification should be included for the user.
+        Chat notifications should only be visible to sender and receiver.
+        """
+        # Use the model's built-in privacy validation
+        if not notification.validate_chat_privacy(user):
+            logger.warning(f"Filtered out chat notification {notification.id} for user {user.id} due to privacy violation")
+            return False
+        
+        return True
 
 
 class NotificationCreateView(APIView):

@@ -2,8 +2,39 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 import json
+import logging
 
+logger = logging.getLogger(__name__)
 User = get_user_model()
+
+class NotificationManager(models.Manager):
+    """
+    Custom manager for Notification model with chat privacy controls
+    """
+    
+    def for_user(self, user_id):
+        """
+        Get notifications for a specific user with proper chat privacy filtering
+        """
+        queryset = self.filter(user_id=user_id)
+        return queryset
+    
+    def chat_notifications_for_user(self, user_id):
+        """
+        Get only chat notifications for a specific user
+        """
+        chat_types = ['chat_message', 'chat_message_delivered', 'chat_message_read', 'chat_file_shared']
+        return self.filter(
+            user_id=user_id,
+            notification_type__in=chat_types
+        )
+    
+    def non_chat_notifications_for_user(self, user_id):
+        """
+        Get all non-chat notifications for a specific user
+        """
+        chat_types = ['chat_message', 'chat_message_delivered', 'chat_message_read', 'chat_file_shared']
+        return self.filter(user_id=user_id).exclude(notification_type__in=chat_types)
 
 class Notification(models.Model):
     NOTIFICATION_TYPES = [
@@ -46,11 +77,15 @@ class Notification(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     sender = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='sent_auth_notifications')
     
+    # Use custom manager
+    objects = NotificationManager()
+    
     class Meta:
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['user', '-created_at']),
             models.Index(fields=['user', 'read']),
+            models.Index(fields=['user', 'notification_type']),
         ]
     
     def __str__(self):
@@ -62,6 +97,25 @@ class Notification(models.Model):
             self.read = True
             self.read_at = timezone.now()
             self.save(update_fields=['read', 'read_at'])
+    
+    def is_chat_notification(self):
+        """Check if this is a chat-related notification"""
+        chat_types = ['chat_message', 'chat_message_delivered', 'chat_message_read', 'chat_file_shared']
+        return self.notification_type in chat_types
+    
+    def validate_chat_privacy(self, requesting_user):
+        """
+        Validate that the requesting user should have access to this chat notification
+        """
+        if not self.is_chat_notification():
+            return True  # Non-chat notifications follow normal access rules
+        
+        # For chat notifications, user must be the intended recipient
+        if self.user_id != requesting_user.id:
+            logger.warning(f"Chat notification privacy violation: user {requesting_user.id} tried to access notification {self.id} intended for user {self.user_id}")
+            return False
+        
+        return True
     
     def to_dict(self):
         """Convert notification to dictionary for JSON serialization"""
